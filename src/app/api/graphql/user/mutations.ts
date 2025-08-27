@@ -1,1 +1,1 @@
-export const mutations=``
+export const mutation=`createUser(name:String,email:String,password:String):Boolean`

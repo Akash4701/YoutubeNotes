@@ -2,6 +2,16 @@
 
 import { BookOpen } from 'lucide-react'
 import React, { useEffect } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import SignUp from './SignUp'
+import SignIn from './SignIn'
 
 function navbar() {
  
@@ -23,10 +33,23 @@ function navbar() {
               <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="text-gray-600 hover:text-gray-900 transition-colors">Sign In</button>
-              <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
-                Get Started
-              </button>
+              
+             <Dialog>
+  <DialogTrigger className="text-gray-600 hover:text-gray-900 transition-colors" >
+    Sign In</DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Welcome to </DialogTitle>
+   <SignIn/>
+  </DialogContent>
+</Dialog>
+              <Dialog>
+  <DialogTrigger className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5" >
+    Get Started</DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Welcome to </DialogTitle>
+   <SignUp/>
+  </DialogContent>
+</Dialog>
             </div>
           </div>
         </div>
