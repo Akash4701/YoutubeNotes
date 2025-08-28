@@ -1,0 +1,40 @@
+import { prisma } from "@/lib/db";
+import { gql } from "graphql-tag";
+
+export const userTypeDefs = gql`
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    password: String!
+  }
+
+  extend type Query {
+   hello: String
+  }
+
+  extend type Mutation {
+    createUser(name:String,email:String,password:String):Boolean
+  }
+`;
+
+export const userResolvers = {
+ Query: {
+    hello: () => "Hello world!",
+  },
+  Mutation: {
+    createUser:async(_:any,{name,email,password}:{name:string,email:string,password:string})=>{
+            const user=await prisma.user.create({
+                data:{
+                    name,
+                    email,
+                    password
+                }
+            })
+            return true;
+    
+    
+    
+        }
+  },
+};

@@ -56,6 +56,7 @@ const SignIn = () => {
         // router.push("/dashboard");
       })
       .catch(error => {
+          alert("Invalid credentials, Please Sign Up if you are a new user")
         
         setError(error.message)
       });

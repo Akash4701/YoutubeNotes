@@ -25,6 +25,7 @@ import {useMutation} from "@apollo/client/react"
 
 
 const formSchema = z.object({
+  name: z.string().min(1, { message: 'Name is required' }),
   email: z.string().email("Invalid email format"),
  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
   confirmPassword: z.string().min(8, { message: 'Password must be at least 8 characters' }),
@@ -45,6 +46,7 @@ const SignUp = () => {
    const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name:"",
       email: "",
       password:"",
       confirmPassword:""
@@ -62,7 +64,7 @@ const SignUp = () => {
         console.log('authUser',authUser);
          await createUserMutation({
         variables: {
-          name: values.email.split("@")[0], // or add a name field to form
+          name: values.name, // or add a name field to form
           email: values.email,
           password: values.password,
         },
@@ -71,6 +73,7 @@ const SignUp = () => {
         // router.push("/dashboard");
       })
       .catch(error => {
+        alert("You are already registered, Please Sign In")
         
         setError(error.message)
       });
@@ -84,6 +87,20 @@ const SignUp = () => {
     <div>
      <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter your name" {...field} />
+              </FormControl>
+             
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="email"
