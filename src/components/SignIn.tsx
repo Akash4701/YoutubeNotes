@@ -51,9 +51,9 @@ const SignIn = () => {
      
       signInWithEmailAndPassword(auth,values.email, values.password)
       .then(authUser => {
-        console.log("Success. The user is created in Firebase")
+        console.log("Success. The user is signed in Firebase")
         console.log('authUser',authUser);
-        // router.push("/dashboard");
+        router.push('/home');
       })
       .catch(error => {
           alert("Invalid credentials, Please Sign Up if you are a new user")

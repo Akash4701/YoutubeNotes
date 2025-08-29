@@ -1,8 +1,25 @@
-import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+// lib/apolloClient.ts
+import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
+import { getAuth } from "firebase/auth";
 
-const client = new ApolloClient({
-  link: new HttpLink({ uri: "http://localhost:3000/api/graphql" }), // your GraphQL server URL
-  cache: new InMemoryCache(),
+const httpLink = createHttpLink({
+  uri: "/api/graphql",
 });
 
-export default client;
+const authLink = setContext(async (_, { headers }) => {
+  const user = getAuth().currentUser;
+  const token = user ? await user.getIdToken() : null;
+
+  return {
+    headers: {
+      ...headers,
+      authorization: token ? `Bearer ${token}` : "",
+    },
+  };
+});
+
+export const client = new ApolloClient({
+  link: authLink.concat(httpLink),
+  cache: new InMemoryCache(),
+});

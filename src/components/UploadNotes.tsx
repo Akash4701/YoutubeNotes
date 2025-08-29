@@ -25,18 +25,18 @@ import {useMutation} from "@apollo/client/react"
 
 
 const formSchema = z.object({
-  name: z.string().min(1, { message: 'Name is required' }),
-  email: z.string().email("Invalid email format"),
- password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  confirmPassword: z.string().min(8, { message: 'Password must be at least 8 characters' }),
+  title: z.string().min(1, { message: 'Name is required' }),
+  youtube_url: z.url("Invalid URL format"),
+ creater: z.string().min(1, { message: 'Creater name is required' }),
+ channelName: z.string().min(1, { message: 'Channel Name is required' }),   
+notes:z.instanceof(File, { message: "File is required." })
+  
 })
-.refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'], // Points to the confirmPassword field for the error
 
-});
 
-const SignUp = () => {
+
+
+const UploadNotes = () => {
   const CREATE_USER=gql`
   mutation CreateUser($name:String!,$email:String!,$password:String!){
   createUser(name:$name,email:$email,password:$password)
@@ -46,38 +46,21 @@ const SignUp = () => {
    const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name:"",
-      email: "",
-      password:"",
-      confirmPassword:""
+      youtube_url:"",
+      title: "",
+      channelName:"",
+      creater:"",
+        notes:undefined
     },
   })
  
- const [createUserMutation]=useMutation(CREATE_USER)
+ 
   function onSubmit(values: z.infer<typeof formSchema>) {
    
     console.log(values)
      
-      createUserWithEmailAndPassword(auth,values.email, values.password)
-      .then(async (authUser) => {
-        console.log("Success. The user is created in Firebase")
-        console.log('authUser',authUser);
-         await createUserMutation({
-        variables: {
-          name: values.name,
-          email: values.email,
-          password: values.password,
-        },
-      });
-      console.log('Successfully Inserted in database');
-        router.push("/home");
-      })
-      .catch(error => {
-        alert("You are already registered, Please Sign In")
-        console.log('error',error.message);
-        
-        setError(error.message)
-      });
+     
+      
     }
    
   
@@ -90,12 +73,12 @@ const SignUp = () => {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
-          name="name"
+          name="youtube_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Youtube Url</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your name" {...field} />
+                <Input placeholder="Enter youtube link" {...field} />
               </FormControl>
              
               <FormMessage />
@@ -104,12 +87,12 @@ const SignUp = () => {
         />
         <FormField
           control={form.control}
-          name="email"
+          name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Video title</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your email" {...field} />
+                <Input placeholder="Enter youtube Video title" {...field} />
               </FormControl>
              
               <FormMessage />
@@ -118,12 +101,12 @@ const SignUp = () => {
         />
         <FormField
           control={form.control}
-          name="password"
+          name="creater"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Video Creater</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your password" {...field} />
+                <Input placeholder="Enter youtube Channel Author" {...field} />
               </FormControl>
              
               <FormMessage />
@@ -132,18 +115,40 @@ const SignUp = () => {
         />
         <FormField
           control={form.control}
-          name="confirmPassword"
+          name="channelName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>Youtube Channel</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your password" {...field} />
+                <Input placeholder="Enter Youtube Channel Name" {...field} />
               </FormControl>
               
               <FormMessage />
             </FormItem>
           )}
         />
+       
+       <FormField
+  control={form.control}
+  name="notes"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Your Notes</FormLabel>
+      <FormControl>
+        <Input
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg"
+          onChange={(e) => {
+            // Pass file to RHF
+            field.onChange(e.target.files?.[0]);
+          }}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
         <Button type="submit">Submit</Button>
       </form>
     </Form>
@@ -152,4 +157,4 @@ const SignUp = () => {
   )
 }
 
-export default SignUp;
+export default UploadNotes;

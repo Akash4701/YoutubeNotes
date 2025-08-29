@@ -5,15 +5,20 @@ import React, { useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
+ 
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import SignUp from './SignUp'
 import SignIn from './SignIn'
+import { useAuth } from '@/lib/context/AuthContext'
+import SignOut from './SignOut'
+import { Button } from './ui/button'
+import UploadNotes from './UploadNotes'
 
 function navbar() {
+  const loader=useAuth().loading;
+
  
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -29,10 +34,25 @@ function navbar() {
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Browse</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Create</a>
+              <Button  className="text-gray-600 hover:text-gray-900 transition-colors">Upload Notes</Button>
               <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
             </div>
-            <div className="flex items-center space-x-4">
+             {!loader ? ( 
+              <div className='flex items-center space-x-4 flex-row'>
+              <Dialog>
+  <DialogTrigger className="text-gray-600 hover:text-gray-900 transition-colors" >
+    Upload Notes</DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Welcome to </DialogTitle>
+   <UploadNotes/>
+  </DialogContent>
+</Dialog>
+              <SignOut/>
+              </div>
+
+             ):(
+               <div className="flex items-center space-x-4">
+             
               
              <Dialog>
   <DialogTrigger className="text-gray-600 hover:text-gray-900 transition-colors" >
@@ -51,6 +71,9 @@ function navbar() {
   </DialogContent>
 </Dialog>
             </div>
+                
+              )}
+           
           </div>
         </div>
       </nav>
