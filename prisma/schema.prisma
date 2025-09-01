@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User{
-  id    Int   @id @default(autoincrement())
+  id    String   @id @unique
   email  String @unique
   password String
   name String
@@ -34,9 +34,12 @@ model Note{
    youtube_url String
    description String?
    likes Int? @default(0)
+   contentCreater  String?
+   channelName String?
+   thumbnail String?
    author String?
     pdf_url String
-    userId Int
+    userId String
     user  User @relation(fields:[userId],references: [id])
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt  
@@ -45,7 +48,7 @@ model Note{
   model Comment{
     id Int @id @default(autoincrement())
     content String
-    authorId   Int
+    authorId   String
     author   User @relation(fields:[authorId],references: [id])
     noteId Int
     note Note @relation (fields:[noteId],references: [id])
@@ -53,9 +56,9 @@ model Note{
   }
    model Connection{
     id Int @id @default(autoincrement())
-    userId Int
+    userId String
     receiverUser User @relation("ReceiverUser", fields:[userId], references: [id])
-    connectedUserId Int
+    connectedUserId String
     connectedUser User @relation("ConnectedUser", fields:[connectedUserId], references: [id])
     createdAt DateTime @default(now())
    }

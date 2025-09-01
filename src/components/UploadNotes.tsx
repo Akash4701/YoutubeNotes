@@ -1,158 +1,239 @@
-
 'use client'
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { auth } from '@/lib/firebase/auth';
-import { Button } from "@/components/ui/button"
+import gql from 'graphql-tag';
+import { useMutation } from "@apollo/client/react"
+import { Supadata, YoutubeVideo } from '@supadata/js';
+import axios from 'axios';
+
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+
 import { Input } from "@/components/ui/input"
-import gql from 'graphql-tag';
-import {useMutation} from "@apollo/client/react"
-
-
-
+import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   title: z.string().min(1, { message: 'Name is required' }),
-  youtube_url: z.url("Invalid URL format"),
- creater: z.string().min(1, { message: 'Creater name is required' }),
- channelName: z.string().min(1, { message: 'Channel Name is required' }),   
-notes:z.instanceof(File, { message: "File is required." })
-  
+  thumbnail: z.string().optional(),  // optional thumbnail
+  creater: z.string().min(1, { message: 'Creator name is required' }),
+  channelName: z.string().min(1, { message: 'Channel Name is required' }),
+  notes: z.instanceof(File, { message: "File is required." })
 })
 
+const uploadToCloudinary = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string);
 
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
 
+  const res = await axios.post(url, formData);
+  
+  console.log('Cloudinary response:', res);
+  return res.data.secure_url; // ✅ Cloudinary file URL
+}
 
 const UploadNotes = () => {
-  const CREATE_USER=gql`
-  mutation CreateUser($name:String!,$email:String!,$password:String!){
-  createUser(name:$name,email:$email,password:$password)
+  const supadata = new Supadata({
+    apiKey: process.env.NEXT_PUBLIC_SUPDATA_API_KEY as string,
+  });
+  const CREATE_NOTE=gql`
+  mutation CreateNotes($title:String!,$youtube_url:String!,$pdf_url:String!,$contentCreater:String!,$thumbnail:String!,$channelName:String!){
+    createNotes(title:$title,youtube_url:$youtube_url,pdf_url:$pdf_url,contentCreater:$contentCreater,thumbnail:$thumbnail,channelName:$channelName)
   }`
-    const router=useRouter();
-    const [error,setError]=useState('');
-   const form = useForm<z.infer<typeof formSchema>>({
+  const [createNotesMutation]=useMutation(CREATE_NOTE)
+
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState(""); // ✅ Separate state for YouTube URL
+  const [autoloader , setAutoloader] = useState(false);
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      youtube_url:"",
       title: "",
-      channelName:"",
-      creater:"",
-        notes:undefined
+      thumbnail: "",
+      channelName: "",
+      creater: "",
+      notes: undefined
     },
   })
- 
- 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-   
-    console.log(values)
-     
-     
-      
-    }
-   
-  
-  
 
+  // ✅ Auto Extract function
+  const AutoExtract = async (url: string) => {
+    if (!url) return;
+    setAutoloader(true);
+    try {
+      const video: YoutubeVideo = await supadata.youtube.video({ id: url });
+
+      form.setValue("thumbnail", video.thumbnail || "");
+      form.setValue("title", video.title || "");
+      form.setValue("channelName", video.channel?.name || "");
+      
+    } catch (error) {
+      console.error("Error fetching video details:", error);
+    } finally {
+      setAutoloader(false);
+    }
+  }
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log("Final form values:", values);
+    try {
+      setLoading(true);
+
+      // Upload to Cloudinary
+      const fileUrl = await uploadToCloudinary(values.notes);
+
+      const finalData = {
+        ...values,
+        youtube_url: youtubeUrl, // ✅ Add the YouTube URL from separate state
+        notes: fileUrl, // replace file with hosted URL
+      };
+
+      await createNotesMutation({
+        variables:{
+          title:finalData.title,
+          youtube_url:finalData.youtube_url,
+          pdf_url:finalData.notes,
+          contentCreater:finalData.creater,
+          thumbnail:finalData.thumbnail || "",
+          channelName:finalData.channelName
+        }
+      })
+
+      console.log("Uploaded successfully:", finalData);
+
+      // TODO: send `finalData` to your GraphQL backend
+    } catch (error) {
+      console.error("Upload error:", error);
+    } finally {
+      setLoading(false);
+    }
+    // here you can call your GraphQL mutation
+  }
 
   return (
-    <div>
-     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="youtube_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Youtube Url</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter youtube link" {...field} />
-              </FormControl>
-             
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Video title</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter youtube Video title" {...field} />
-              </FormControl>
-             
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="creater"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Video Creater</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter youtube Channel Author" {...field} />
-              </FormControl>
-             
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="channelName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Youtube Channel</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter Youtube Channel Name" {...field} />
-              </FormControl>
-              
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-       
-       <FormField
-  control={form.control}
-  name="notes"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Your Notes</FormLabel>
-      <FormControl>
+    <div className="max-w-2xl ">
+      {/* Replaced CardHeader with a normal header */}
+      <h1 className="text-2xl font-bold mb-2 text-center">Upload YouTube Notes</h1>
+      
+      {/* ✅ YouTube URL input with separate state */}
+      <div className="flex gap-2 mb-4">
         <Input
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          onChange={(e) => {
-            // Pass file to RHF
-            field.onChange(e.target.files?.[0]);
-          }}
+          placeholder="Enter YouTube link"
+          value={youtubeUrl}
+          onChange={(e) => setYoutubeUrl(e.target.value)}
         />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+        <Button
+          type="button"
+          onClick={() => AutoExtract(youtubeUrl)} // ✅ Use separate state
+          disabled={autoloader}
+        >
+          {autoloader ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch"}
+        </Button>
+      </div>
 
-        <Button type="submit">Submit</Button>
-      </form>
-    </Form>
-    
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+
+          {/* Title */}
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Video Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter YouTube Video title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Creator */}
+          <FormField
+            control={form.control}
+            name="creater"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Video Creator</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter YouTube Channel Author" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Thumbnail */}
+          <FormField
+            control={form.control}
+            name="thumbnail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Video Thumbnail</FormLabel>
+                <FormControl>
+                  <Input placeholder="YouTube Video Thumbnail URL" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Channel Name */}
+          <FormField
+            control={form.control}
+            name="channelName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Channel Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter YouTube Channel Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Notes Upload */}
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Your Notes</FormLabel>
+                <FormControl>
+                  <Input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => {
+                      field.onChange(e.target.files?.[0]);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+          </Button>
+        </form>
+      </Form>
     </div>
   )
 }

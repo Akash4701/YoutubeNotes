@@ -20,8 +20,13 @@ export function AuthProvider({children}: {children:React.ReactNode}) {
     const [loading,setLoading]=useState<boolean>(true);
     useEffect(()=>{
         const authenticated=auth
-        const unsubscribe=onAuthStateChanged(authenticated,(user)=>{
+        const unsubscribe=onAuthStateChanged(authenticated,async(user)=>{
+             const token = user ? await user.getIdToken() : null;
+  console.log(' token', token);
+
+            console.log('user',user);
             if(user){
+
                 setUser(user);
                 setLoading(false);
             }else{
@@ -33,7 +38,7 @@ export function AuthProvider({children}: {children:React.ReactNode}) {
         return ()=>unsubscribe()
         
 
-    },[user,loading])
+    },[user])
 
 
 

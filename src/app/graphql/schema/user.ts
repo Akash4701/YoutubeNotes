@@ -20,12 +20,19 @@ export const userTypeDefs = gql`
 
 export const userResolvers = {
  Query: {
+
     hello: () => "Hello world!",
   },
   Mutation: {
-    createUser:async(_:any,{name,email,password}:{name:string,email:string,password:string})=>{
+    
+    createUser:async(_:any,{name,email,password}:{name:string,email:string,password:string},context:any)=>{
+      if(!context.user){
+          throw new Error("Not authenticated");
+      }
+      
             const user=await prisma.user.create({
                 data:{
+                  id:context.user.uid,
                     name,
                     email,
                     password
