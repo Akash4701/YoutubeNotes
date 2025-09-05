@@ -15,7 +15,7 @@ export const noteTypeDefs = gql`
   }
 
   extend type Query {
-   hello: String
+   getNotes: [Notes!]!
   }
 
   extend type Mutation {
@@ -25,7 +25,13 @@ export const noteTypeDefs = gql`
 
 export const noteResolvers = {
  Query: {
-    hello: () => "Hello world!",
+  getNotes:async(__:any,_:any,context:any)=>{
+    if(!context.user){
+        throw new Error("Not authenticated");
+    }
+    return prisma.note.findMany();
+  }
+    
   },
   Mutation: {
     createNotes:async(_:any,{title,youtube_url,pdf_url,contentCreater,thumbnail,channelName}:{title:string,youtube_url:string,pdf_url:string,contentCreater:string,thumbnail:string,channelName:string},context:any)=>{
