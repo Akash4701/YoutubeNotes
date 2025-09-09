@@ -1,74 +1,115 @@
+'use client'
+import { useMutation } from '@apollo/client/react';
+import gql from 'graphql-tag';
 import { Calendar, ExternalLink, FileText, Heart, Play, Sparkles, User } from 'lucide-react';
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
-function NoteCard ({ note, index }: { note: any; index: number }){
-     const getGradientClass = (index: number) => {
-    const gradients = [
-      'from-purple-600 via-pink-600 to-blue-600',
-      'from-green-500 via-teal-500 to-blue-500',
-      'from-orange-500 via-red-500 to-pink-500',
-      'from-blue-600 via-purple-600 to-indigo-600',
-      'from-yellow-500 via-orange-500 to-red-500',
-      'from-teal-500 via-cyan-500 to-blue-500'
-    ];
-}
+function NoteCard({ note, index }: { note: any; index: number }) {
+  const [liked, setLiked] = useState<boolean>(note.likedByMe);
+  const [likesCount, setLikesCount] = useState<number>(note.likes || 0);
 
-    const formatDate = (dateString: any) => {
+  const LIKE_NOTE = gql`
+   mutation LikeNote($noteId:ID!,$liked:Boolean){
+     likeNotes(noteId:$noteId,liked:$liked)
+   }
+  `
+
+  const [likeNoteMutation, { loading: likeLoading }] = useMutation(LIKE_NOTE);
+
+  // Update local state when note prop changes (after reload/refetch)
+  useEffect(() => {
+    setLiked(note.likedByMe);
+    setLikesCount(note.likes || 0);
+  }, [note.likedByMe, note.likes]);
+
+  const handleLikeToggle = async () => {
+  const newLikedState = !liked;
+  const previousLiked = liked;
+  const previousLikesCount = likesCount;
+  
+  // Optimistically update UI first
+  setLiked(newLikedState);
+  setLikesCount(prev => {
+    if (newLikedState && !previousLiked) {
+      return prev + 1; // Liking: add 1
+    } else if (!newLikedState && previousLiked) {
+      return Math.max(0, prev - 1); // Unliking: subtract 1
+    }
+    return prev;
+  });
+
+  try {
+    await likeNoteMutation({
+      variables: {
+        noteId: note.id,
+        liked: newLikedState
+      },
+      // This automatically refetches all queries that use these names
+      // Much simpler and more reliable than manual cache updates
+      refetchQueries: [
+        'GetNotes',    // Refetches any getNotes queries
+        'SearchNotes'  // Refetches any searchNotes queries
+      ],
+      // This ensures the queries are refetched even if they're not currently active
+      awaitRefetchQueries: true
+    });
+
+    console.log('Like operation successful');
+  } catch (err) {
+    console.log('Like mutation failed:', err.message);
+    
+    // Revert optimistic updates on error
+    setLiked(previousLiked);
+    setLikesCount(previousLikesCount);
+  }
+};
+
+  const formatDate = (dateString: any) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
-
-    return(
+  return (
     <div className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100">
-      {/* Animated background gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${getGradientClass(index)} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-      
       {/* Thumbnail with overlay */}
       <div className="relative overflow-hidden">
-        <div className={`w-full h-56 bg-gradient-to-br ${getGradientClass(index)} flex items-center justify-center relative`}>
-          {/* Animated background pattern */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/30 animate-pulse"></div>
-            <div className="absolute top-8 right-8 w-6 h-6 rounded-full bg-white/20 animate-bounce delay-100"></div>
-            <div className="absolute bottom-6 left-8 w-4 h-4 rounded-full bg-white/25 animate-ping delay-300"></div>
-          </div>
-          
-          {/* Video icon with animation */}
-          <div className="relative z-10 transform group-hover:scale-110 transition-transform duration-300">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-              <Play className="w-8 h-8 text-white ml-1" />
-            </div>
-          </div>
-          
-          {/* Floating sparkles */}
-          <Sparkles className="absolute top-6 right-6 w-6 h-6 text-white/60 animate-pulse" />
+        <div className="w-full h-56 relative group overflow-hidden rounded-lg">
+          {/* Thumbnail image */}
+          <img
+            src={note.thumbnail}
+            alt={note.title}
+            className="w-full h-full object-cover"
+          />
         </div>
-        
+
         {/* Likes badge with glow effect */}
         <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 border border-white/20">
-          <Heart className="w-4 h-4 text-red-400" />
-          <span className="font-semibold">{note.likes || 0}</span>
-        </div>
-        
-        {/* Play button overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full p-4 transform scale-75 group-hover:scale-100 transition-transform duration-300">
-            <Play className="w-6 h-6 text-gray-800" />
-          </div>
+          <button 
+            onClick={handleLikeToggle}
+            disabled={likeLoading}
+            className="flex items-center gap-1 transition-all duration-200 hover:scale-110"
+          >
+            <Heart
+              className={`w-4 h-4 transition-all duration-200 ${
+                liked 
+                  ? "text-red-500 fill-red-500" 
+                  : "text-gray-300 hover:text-red-400"
+              } ${likeLoading ? 'animate-pulse' : ''}`}
+            />
+          </button>
+          <span className="font-semibold">{likesCount}</span>
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-6 relative">
         <h3 className="font-bold text-xl mb-3 text-gray-900 leading-tight group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 group-hover:bg-clip-text transition-all duration-300">
           {note.title}
         </h3>
-        
+
         <div className="space-y-3 mb-6">
           <div className="flex items-center gap-3 text-sm">
             <div className="p-2 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
@@ -76,14 +117,14 @@ function NoteCard ({ note, index }: { note: any; index: number }){
             </div>
             <span className="text-gray-700 font-medium">{note.contentCreater || 'Unknown Creator'}</span>
           </div>
-          
+
           <div className="flex items-center gap-3 text-sm">
             <div className="p-2 bg-gradient-to-br from-green-50 to-teal-50 rounded-lg">
               <Calendar className="w-4 h-4 text-green-600" />
             </div>
             <span className="text-gray-600">{formatDate(note.createdAt)}</span>
           </div>
-          
+
           {note.channelName && (
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg">
@@ -93,7 +134,7 @@ function NoteCard ({ note, index }: { note: any; index: number }){
             </div>
           )}
         </div>
-        
+
         {/* Action buttons with enhanced design */}
         <div className="flex gap-3">
           <a
@@ -119,6 +160,5 @@ function NoteCard ({ note, index }: { note: any; index: number }){
     </div>
   );
 }
-
 
 export default NoteCard;

@@ -24,16 +24,19 @@ model User{
   totalLikes  Int? @default(0)
   notes Note[]
   comments Comment[]
+  likes Like[]
   connections Connection[] @relation("ReceiverUser")
   connectedTo Connection[] @relation("ConnectedUser")
 
 }
 model Note{
-   id    Int   @id @default(autoincrement())
+   id    String   @id @default(uuid())
    title String
    youtube_url String
    description String?
-   likes Int? @default(0)
+   likes Like[]
+   likedByMe  Boolean?
+
    contentCreater  String?
    channelName String?
    thumbnail String?
@@ -45,12 +48,25 @@ model Note{
     updatedAt DateTime @updatedAt  
     comments Comment[]
 }
+  model Like{
+    id String @id @default(uuid())
+     userId String
+    user  User @relation(fields:[userId],references: [id])
+     noteId String
+    note  Note @relation(fields:[noteId],references: [id])
+    liked Boolean @default(false)
+
+    @@unique([userId,noteId])
+
+
+
+  }
   model Comment{
     id Int @id @default(autoincrement())
     content String
     authorId   String
     author   User @relation(fields:[authorId],references: [id])
-    noteId Int
+    noteId String
     note Note @relation (fields:[noteId],references: [id])
 
   }

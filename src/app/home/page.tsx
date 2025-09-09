@@ -1,169 +1,295 @@
 'use client'
-import React, { useState, useMemo } from 'react';
-import { Search, TrendingUp, Clock, Upload, Heart, Calendar, User, ExternalLink, Play, FileText, Sparkles, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, TrendingUp, Clock, Upload, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { useQuery, useLazyQuery } from '@apollo/client/react';
+import { gql } from '@apollo/client';
 import NoteCard from '@/components/NoteCard';
+import { useAuth } from '@/lib/context/AuthContext';
+
+// GraphQL Queries with offset pagination
+const GET_NOTES = gql`
+  query GetNotes($page: Int!, $limit: Int!, $sortBy: SortOrder!) {
+    getNotes(page: $page, limit: $limit, sortBy: $sortBy) {
+      notes {
+        id
+        title
+        youtube_url
+        likes
+        likedByMe
+        contentCreater
+        channelName
+        thumbnail
+        pdf_url
+        userId
+        createdAt
+        updatedAt
+      }
+      totalCount
+      totalPages
+      currentPage
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+`;
+
+const SEARCH_NOTES = gql`
+  query SearchNotes($searchTerm: String!, $searchBy: SearchField!, $page: Int!, $limit: Int!) {
+    searchNotes(searchTerm: $searchTerm, searchBy: $searchBy, page: $page, limit: $limit) {
+      notes {
+        id
+        title
+        youtube_url
+        likes
+        contentCreater
+        channelName
+        likedByMe
+        thumbnail
+        pdf_url
+        userId
+        createdAt
+        updatedAt
+      }
+      totalCount
+      totalPages
+      currentPage
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+`;
+
+// Custom hook for debouncing
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 const YouTubeNotesPage = () => {
-  // Mock data based on your Note model
-  const mockNotes = [
-    {
-      id: 1,
-      title: "React Hooks Deep Dive",
-      youtube_url: "https://youtube.com/watch?v=abc123",
-      likes: 245,
-      contentCreater: "Tech Guru",
-      channelName: "Programming Pro",
-      thumbnail: "https://img.youtube.com/vi/abc123/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes1.pdf",
-      userId: "user1",
-      createdAt: "2024-09-05T10:30:00Z",
-      updatedAt: "2024-09-05T10:30:00Z"
-    },
-    {
-      id: 2,
-      title: "JavaScript ES6 Features Explained",
-      youtube_url: "https://youtube.com/watch?v=def456",
-      likes: 189,
-      contentCreater: "Code Master",
-      channelName: "JS Academy",
-      thumbnail: "https://img.youtube.com/vi/def456/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes2.pdf",
-      userId: "user2",
-      createdAt: "2024-09-04T15:20:00Z",
-      updatedAt: "2024-09-04T15:20:00Z"
-    },
-    {
-      id: 3,
-      title: "Database Design Principles",
-      youtube_url: "https://youtube.com/watch?v=ghi789",
-      likes: 156,
-      contentCreater: "Data Expert",
-      channelName: "Database Hub",
-      thumbnail: "https://img.youtube.com/vi/ghi789/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes3.pdf",
-      userId: "user3",
-      createdAt: "2024-09-03T09:15:00Z",
-      updatedAt: "2024-09-03T09:15:00Z"
-    },
-    {
-      id: 4,
-      title: "Machine Learning Basics",
-      youtube_url: "https://youtube.com/watch?v=jkl012",
-      likes: 312,
-      contentCreater: "AI Teacher",
-      channelName: "ML World",
-      thumbnail: "https://img.youtube.com/vi/jkl012/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes4.pdf",
-      userId: "user4",
-      createdAt: "2024-09-06T08:00:00Z",
-      updatedAt: "2024-09-06T08:00:00Z"
-    },
-    {
-      id: 5,
-      title: "CSS Grid Layout Tutorial",
-      youtube_url: "https://youtube.com/watch?v=mno345",
-      likes: 98,
-      contentCreater: "Design Pro",
-      channelName: "CSS Masters",
-      thumbnail: "https://img.youtube.com/vi/mno345/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes5.pdf",
-      userId: "user5",
-      createdAt: "2024-09-02T14:45:00Z",
-      updatedAt: "2024-09-02T14:45:00Z"
-    },
-    {
-      id: 6,
-      title: "Node.js Performance Optimization",
-      youtube_url: "https://youtube.com/watch?v=pqr678",
-      likes: 267,
-      contentCreater: "Backend Expert",
-      channelName: "Server Side",
-      thumbnail: "https://img.youtube.com/vi/pqr678/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes6.pdf",
-      userId: "user6",
-      createdAt: "2024-09-01T11:30:00Z",
-      updatedAt: "2024-09-01T11:30:00Z"
-    },
-    {
-      id: 7,
-      title: "Python Data Science Masterclass",
-      youtube_url: "https://youtube.com/watch?v=xyz789",
-      likes: 423,
-      contentCreater: "Data Scientist Pro",
-      channelName: "Python Hub",
-      thumbnail: "https://img.youtube.com/vi/xyz789/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes7.pdf",
-      userId: "user7",
-      createdAt: "2024-09-07T16:20:00Z",
-      updatedAt: "2024-09-07T16:20:00Z"
-    },
-    {
-      id: 8,
-      title: "Advanced TypeScript Patterns",
-      youtube_url: "https://youtube.com/watch?v=uvw456",
-      likes: 178,
-      contentCreater: "TS Expert",
-      channelName: "TypeScript World",
-      thumbnail: "https://img.youtube.com/vi/uvw456/maxresdefault.jpg",
-      pdf_url: "https://example.com/notes8.pdf",
-      userId: "user8",
-      createdAt: "2024-09-06T12:15:00Z",
-      updatedAt: "2024-09-06T12:15:00Z"
-    }
-  ];
-
+  // State management
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchBy, setSearchBy] = useState('all');
+  const [searchBy, setSearchBy] = useState('TITLE');
   const [activeSection, setActiveSection] = useState('trending');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  const ITEMS_PER_PAGE = 9;
+  
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Enhanced search functionality
-  const filteredNotes = useMemo(() => {
-    if (!searchTerm) return mockNotes;
-
-    return mockNotes.filter(note => {
-      const term = searchTerm.toLowerCase();
-      
-      switch (searchBy) {
-        case 'title':
-          return note.title.toLowerCase().includes(term);
-        case 'creator':
-          return note.contentCreater?.toLowerCase().includes(term);
-        case 'channel':
-          return note.channelName?.toLowerCase().includes(term);
-        case 'url':
-          return note.youtube_url.toLowerCase().includes(term);
-        case 'all':
-        default:
-          return (
-            note.title.toLowerCase().includes(term) ||
-            note.contentCreater?.toLowerCase().includes(term) ||
-            note.channelName?.toLowerCase().includes(term) ||
-            note.youtube_url.toLowerCase().includes(term)
-          );
-      }
-    });
-  }, [searchTerm, searchBy]);
-
-  // Get notes for different sections
-  const getTrendingNotes = () => filteredNotes.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-  const getNewlyUploadedNotes = () => filteredNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const getAllNotes = () => filteredNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const getCurrentNotes = () => {
+  // Get sort type based on active section
+  const getSortType = useCallback(() => {
     switch (activeSection) {
       case 'trending':
-        return getTrendingNotes();
+        return 'LIKES_DESC';
       case 'newly-uploaded':
-        return getNewlyUploadedNotes();
+        return 'CREATED_AT_DESC';
       case 'all-notes':
-        return getAllNotes();
+        return 'CREATED_AT_DESC';
       default:
-        return getTrendingNotes();
+        return 'LIKES_DESC';
     }
-  };
+  }, [activeSection]);
 
- 
+  const { token } = useAuth();
   
+  // Use useLazyQuery for notes
+  const [getNotes, { data: notesData, loading: notesLoading, error: notesError }] = useLazyQuery(GET_NOTES);
+
+  // Function to fetch notes
+  const fetchNotes = useCallback((page = currentPage) => {
+    if (token) {
+      getNotes({
+        variables: {
+          page,
+          limit: ITEMS_PER_PAGE,
+          sortBy: getSortType(),
+        },
+        
+      });
+    }
+  }, [token, currentPage, getNotes, getSortType]);
+
+  // Initial fetch when token is available
+  useEffect(() => {
+    fetchNotes(1);
+  }, [token, getSortType()]);
+
+  console.log('notesData:', notesData);
+
+  // Lazy query for searching notes
+  const [searchNotes, { data: searchData, loading: searchLoading, error: searchError }] = useLazyQuery(SEARCH_NOTES);
+
+  // Effect to handle search
+  useEffect(() => {
+    if (debouncedSearchTerm.trim()) {
+      setIsSearching(true);
+      setCurrentPage(1);
+      
+      searchNotes({
+        variables: {
+          searchTerm: debouncedSearchTerm,
+          searchBy,
+          page: 1,
+          limit: ITEMS_PER_PAGE
+        }
+      });
+    } else {
+      setIsSearching(false);
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm, searchBy, searchNotes, token]);
+
+  // Effect to refetch notes when section or page changes (only if not searching)
+  useEffect(() => {
+    if (!isSearching && token) {
+      fetchNotes(currentPage);
+    }
+  }, [activeSection, currentPage, isSearching, fetchNotes, token]);
+
+  // Effect to handle search pagination
+  useEffect(() => {
+    if (isSearching && debouncedSearchTerm.trim() && currentPage > 1) {
+      searchNotes({
+        variables: {
+          searchTerm: debouncedSearchTerm,
+          searchBy,
+          page: currentPage,
+          limit: ITEMS_PER_PAGE
+        },
+        
+      });
+    }
+  }, [currentPage, isSearching, debouncedSearchTerm, searchBy, searchNotes, token]);
+
+  // Get current data and pagination info
+  const currentData = isSearching ? searchData?.searchNotes : notesData?.getNotes;
+  const currentNotes = currentData?.notes || [];
+  const totalCount = currentData?.totalCount || 0;
+  const totalPages = currentData?.totalPages || 1;
+  const hasNextPage = currentData?.hasNextPage || false;
+  const hasPreviousPage = currentData?.hasPreviousPage || false;
+  const pageNumber = currentData?.currentPage || currentPage;
+  const isLoading = isSearching ? searchLoading : notesLoading;
+  const error = isSearching ? searchError : notesError;
+
+  // Handle section change
+  const handleSectionChange = useCallback((section) => {
+    setActiveSection(section);
+    setCurrentPage(1);
+    if (isSearching) {
+      setSearchTerm('');
+      setIsSearching(false);
+    }
+  }, [isSearching]);
+
+  // Handle search term change
+  const handleSearchChange = useCallback((e) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  // Handle search filter change
+  const handleSearchByChange = useCallback((e) => {
+    setSearchBy(e.target.value);
+    setCurrentPage(1);
+  }, []);
+
+  // Handle page change
+  const handlePageChange = useCallback((newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [totalPages]);
+
+  // Generate pagination numbers
+  const getPaginationNumbers = useMemo(() => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    // Always include first page
+    if (totalPages > 0) {
+      rangeWithDots.push(1);
+    }
+
+    // Calculate range around current page
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    // Add dots and range
+    if (currentPage - delta > 2) {
+      rangeWithDots.push('...');
+    }
+
+    rangeWithDots.push(...range);
+
+    // Add dots and last page
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...');
+    }
+
+    if (totalPages > 1) {
+      rangeWithDots.push(totalPages);
+    }
+
+    // Remove duplicates
+    return rangeWithDots.filter((item, index, arr) => {
+      return arr.indexOf(item) === index;
+    });
+  }, [currentPage, totalPages]);
+
+  // Loading component
+  const LoadingGrid = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+      {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+        <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
+          <div className="h-48 bg-gray-200"></div>
+          <div className="p-6">
+            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+            <div className="flex items-center justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Error component
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-4">{error.message}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
@@ -179,13 +305,15 @@ const YouTubeNotesPage = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-             
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                YouTube Notes Hub
+              </h1>
               <p className="text-gray-600 text-lg font-medium">Discover amazing educational content ✨</p>
             </div>
             
             <div className="flex items-center gap-6">
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-2xl shadow-lg">
-                <span className="font-bold text-lg">{filteredNotes.length}</span>
+                <span className="font-bold text-lg">{totalCount}</span>
                 <span className="ml-2 opacity-90">Notes</span>
               </div>
             </div>
@@ -198,14 +326,24 @@ const YouTubeNotesPage = () => {
               <div className="flex-1 relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-25 group-focus-within:opacity-40 transition-opacity duration-300"></div>
                 <div className="relative bg-white rounded-2xl border border-gray-200 shadow-lg">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+                  <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 transition-colors ${
+                    isLoading ? 'text-blue-500 animate-spin' : 'text-gray-400'
+                  }`} />
                   <input
                     type="text"
                     placeholder="Search your perfect learning content..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="w-full pl-12 pr-6 py-4 bg-transparent rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-lg font-medium"
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -214,14 +352,13 @@ const YouTubeNotesPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl blur opacity-25 group-focus-within:opacity-40 transition-opacity duration-300"></div>
                 <select
                   value={searchBy}
-                  onChange={(e) => setSearchBy(e.target.value)}
+                  onChange={handleSearchByChange}
                   className="relative bg-white border border-gray-200 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-semibold text-gray-700 shadow-lg appearance-none cursor-pointer min-w-48"
                 >
-                  <option value="all">🔍 Search Everything</option>
-                  <option value="title">📝 Search by Title</option>
-                  <option value="creator">👤 Search by Creator</option>
-                  <option value="channel">📺 Search by Channel</option>
-                  <option value="url">🔗 Search by URL</option>
+                  <option value="TITLE">📝 Search by Title</option>
+                  <option value="CREATOR">👤 Search by Creator</option>
+                  <option value="CHANNEL">📺 Search by Channel</option>
+                  <option value="URL">🔗 Search by URL</option>
                 </select>
                 <Filter className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               </div>
@@ -230,48 +367,146 @@ const YouTubeNotesPage = () => {
         </div>
       </div>
 
-      {/* Section Navigation with enhanced design */}
-      <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex space-x-2">
-            {[
-              { id: 'trending', label: 'Trending', icon: TrendingUp, color: 'from-red-500 to-pink-500' },
-              { id: 'newly-uploaded', label: 'Fresh Content', icon: Clock, color: 'from-green-500 to-teal-500' },
-              { id: 'all-notes', label: 'All Notes', icon: Upload, color: 'from-blue-500 to-purple-500' }
-            ].map(({ id, label, icon: Icon, color }) => (
-              <button
-                key={id}
-                onClick={() => setActiveSection(id)}
-                className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl font-bold transition-all duration-300 relative overflow-hidden ${
-                  activeSection === id
-                    ? `bg-gradient-to-r ${color} text-white shadow-lg transform -translate-y-1`
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {label}
-                {activeSection === id && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
-                )}
-              </button>
-            ))}
+      {/* Section Navigation - Hidden during search */}
+      {!isSearching && (
+        <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex space-x-2">
+              {[
+                { id: 'trending', label: 'Trending', icon: TrendingUp, color: 'from-red-500 to-pink-500' },
+                { id: 'newly-uploaded', label: 'Fresh Content', icon: Clock, color: 'from-green-500 to-teal-500' },
+                { id: 'all-notes', label: 'All Notes', icon: Upload, color: 'from-blue-500 to-purple-500' }
+              ].map(({ id, label, icon: Icon, color }) => (
+                <button
+                  key={id}
+                  onClick={() => handleSectionChange(id)}
+                  className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl font-bold transition-all duration-300 relative overflow-hidden ${
+                    activeSection === id
+                      ? `bg-gradient-to-r ${color} text-white shadow-lg transform -translate-y-1`
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {label}
+                  {activeSection === id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Notes Grid with enhanced spacing */}
+      {/* Search Results Header */}
+      {isSearching && debouncedSearchTerm && (
+        <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Search className="w-6 h-6 text-purple-600" />
+                <span className="text-lg font-semibold text-gray-700">
+                  Search results for "{debouncedSearchTerm}"
+                </span>
+                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {totalCount} results
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setIsSearching(false);
+                }}
+                className="text-gray-500 hover:text-gray-700 font-medium"
+              >
+                Clear search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notes Grid */}
       <div className="relative max-w-7xl mx-auto px-6 py-12">
-        {getCurrentNotes().length === 0 ? (
+        {isLoading ? (
+          <LoadingGrid />
+        ) : currentNotes.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-8xl mb-6 animate-bounce">🔍</div>
-            <h3 className="text-3xl font-bold text-gray-700 mb-4">No notes found</h3>
-            <p className="text-gray-500 text-lg">Try a different search term or filter</p>
+            <div className="text-8xl mb-6 animate-bounce">
+              {isSearching ? '🔍' : '📚'}
+            </div>
+            <h3 className="text-3xl font-bold text-gray-700 mb-4">
+              {isSearching ? 'No search results found' : 'No notes available'}
+            </h3>
+            <p className="text-gray-500 text-lg">
+              {isSearching ? 'Try a different search term or filter' : 'Check back later for new content'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {getCurrentNotes().map((note, index) => (
+            {currentNotes.map((note, index) => (
               <NoteCard key={note.id} note={note} index={index} />
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && !isLoading && (
+          <div className="flex justify-center items-center mt-12 gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!hasPreviousPage}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </button>
+
+            <div className="flex gap-2">
+              {getPaginationNumbers.map((page, index) => (
+                <button
+                  key={index}
+                  onClick={() => typeof page === 'number' && handlePageChange(page)}
+                  disabled={page === '...'}
+                  className={`w-12 h-12 rounded-xl font-bold transition-all duration-200 ${
+                    page === currentPage
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : page === '...'
+                      ? 'text-gray-400 cursor-default'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-lg border border-gray-200'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!hasNextPage}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Page info */}
+        {totalCount > 0 && !isLoading && (
+          <div className="text-center mt-6 text-gray-500">
+            <div className="flex items-center justify-center gap-2">
+              <span>
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} notes
+              </span>
+              <span>•</span>
+              <span>Page {currentPage} of {totalPages}</span>
+            </div>
+            {isSearching && (
+              <div className="mt-2 text-sm">
+                Search results for "{debouncedSearchTerm}" in {searchBy.toLowerCase().replace('_', ' ')}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -17,12 +17,13 @@ const server = new ApolloServer({
 // Typescript: req has the type NextRequest
 const handler = startServerAndCreateNextHandler<NextRequest>(server, {
     context: async (req) => { 
+        console.log(req.headers);
         const authHeader=req.headers.get("authorization")
-       
+        console.log("authHeader",authHeader);
         const token=authHeader?.split("Bearer ")[1];
           console.log(
             "ke cjkd c",token);
-        
+            
         let user=null;
         if(token){
             try{

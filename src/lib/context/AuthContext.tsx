@@ -5,28 +5,31 @@ import { auth } from '../firebase/auth'
 
  type AuthContexttype={
     user:User | null
-    loading:boolean
+    loading:boolean,
+    token:string | null
 
    }
 
     const AuthContext=createContext<AuthContexttype>({
         user:null,
-        loading:true
+        loading:true,
+        token:''
     });
 export function AuthProvider({children}: {children:React.ReactNode}) {
   
 
     const [user,setUser]=useState<User | null>(null);
     const [loading,setLoading]=useState<boolean>(true);
+    const [token,setToken]=useState<string |null>('')
     useEffect(()=>{
         const authenticated=auth
         const unsubscribe=onAuthStateChanged(authenticated,async(user)=>{
              const token = user ? await user.getIdToken() : null;
+            setToken(token);
   console.log(' token', token);
 
             console.log('user',user);
-            if(user){
-
+            if(user){ 
                 setUser(user);
                 setLoading(false);
             }else{
@@ -44,7 +47,7 @@ export function AuthProvider({children}: {children:React.ReactNode}) {
 
 
   return (
-   <AuthContext.Provider value={{user,loading}}>
+   <AuthContext.Provider value={{user,loading,token}}>
     {children}
    </AuthContext.Provider>
   )

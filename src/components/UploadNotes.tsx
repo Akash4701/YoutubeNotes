@@ -114,6 +114,7 @@ const UploadNotes = () => {
       })
 
       console.log("Uploaded successfully:", finalData);
+      router.push('/home');
 
       // TODO: send `finalData` to your GraphQL backend
     } catch (error) {
