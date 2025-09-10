@@ -8,10 +8,11 @@ export const noteTypeDefs = gql`
     youtube_url: String!
     pdf_url: String!
     userId: ID!
+    likesCount:Int
     contentCreater: String
     thumbnail: String
     channelName: String
-    likes: Int
+    
     createdAt: String!
     updatedAt: String!
     likedByMe:Boolean!
@@ -133,16 +134,7 @@ export const noteResolvers = {
           take: validLimit,
           orderBy: getOrderBy(sortBy),
           include: {
-            _count: {
-              select: { 
-                likes:{
-                where:{
-                  liked:true
-
-                } 
-               }
-            }
-          },
+            
           
             likes: {
               where: { userId: context.user.uid, liked: true }
@@ -152,7 +144,7 @@ export const noteResolvers = {
 
         const formattedNotes = notes.map((note) => ({
           ...note,
-          likes: note._count.likes,
+          
           likedByMe: note.likes.length > 0 && note.likes[0].liked === true, // count only "liked: true" for current user
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
@@ -217,11 +209,7 @@ export const noteResolvers = {
           take: validLimit,
           orderBy: [{ createdAt: "desc" }],
           include: {
-            _count:{
-            likes: {
-              where: { liked: true },
-            },
-          },
+           
           likes:{
             where: { userId: context.user.uid, liked: true }
           }
@@ -231,8 +219,8 @@ export const noteResolvers = {
 
         const formattedNotes = notes.map((note) => ({
           ...note,
-          likes: note._count.likes,
-          likedByMe:  note.likes.length > 0 && note.likes[0].liked === true, // count only "liked: true" for current user
+         
+          likedByMe:  note.likes.length > 0 , // count only "liked: true" for current user
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
@@ -313,7 +301,8 @@ export const noteResolvers = {
          console.log('object, noteId,liked', noteId,liked);
 
         try{
-          const like=await prisma.like.upsert({
+          const results=await prisma.$transaction([
+              prisma.like.upsert({
             where:{
               userId_noteId:{
                  noteId,
@@ -333,7 +322,37 @@ export const noteResolvers = {
               liked
             }
 
-          })
+          }),
+          liked ?(
+              prisma.note.update({
+              where:{
+                id:noteId
+              },
+              data:{
+                likesCount:{
+                  increment:1
+                }
+              }
+             })
+            )
+
+          :(
+             prisma.note.update({
+              where:{
+                id:noteId
+              },
+              data:{
+                likesCount:{
+                  decrement:1
+                }
+              }
+            })
+          )
+         
+
+
+          ])
+         
           console.log('Liked successfully');
           return true
 

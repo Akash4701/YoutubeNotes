@@ -6,7 +6,9 @@ import React, { useEffect, useState } from 'react'
 
 function NoteCard({ note, index }: { note: any; index: number }) {
   const [liked, setLiked] = useState<boolean>(note.likedByMe);
-  const [likesCount, setLikesCount] = useState<number>(note.likes || 0);
+  const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
+  console.log('likesCount',likesCount,note.title)
+
 
   const LIKE_NOTE = gql`
    mutation LikeNote($noteId:ID!,$liked:Boolean){
@@ -15,12 +17,11 @@ function NoteCard({ note, index }: { note: any; index: number }) {
   `
 
   const [likeNoteMutation, { loading: likeLoading }] = useMutation(LIKE_NOTE);
-
   // Update local state when note prop changes (after reload/refetch)
   useEffect(() => {
     setLiked(note.likedByMe);
-    setLikesCount(note.likes || 0);
-  }, [note.likedByMe, note.likes]);
+    setLikesCount(note.likesCount || 0);
+  }, [note.likedByMe, note.likesCount]);
 
   const handleLikeToggle = async () => {
   const newLikedState = !liked;
@@ -44,14 +45,9 @@ function NoteCard({ note, index }: { note: any; index: number }) {
         noteId: note.id,
         liked: newLikedState
       },
-      // This automatically refetches all queries that use these names
-      // Much simpler and more reliable than manual cache updates
-      refetchQueries: [
-        'GetNotes',    // Refetches any getNotes queries
-        'SearchNotes'  // Refetches any searchNotes queries
-      ],
-      // This ensures the queries are refetched even if they're not currently active
-      awaitRefetchQueries: true
+      optimisticResponse: {
+        likeNotes: newLikedState
+      }
     });
 
     console.log('Like operation successful');
@@ -147,7 +143,7 @@ function NoteCard({ note, index }: { note: any; index: number }) {
             Watch
           </a>
           <a
-            href={note.pdf_url}
+            href={`/note/${note.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"

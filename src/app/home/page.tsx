@@ -14,7 +14,8 @@ const GET_NOTES = gql`
         id
         title
         youtube_url
-        likes
+        likesCount
+        
         likedByMe
         contentCreater
         channelName
@@ -40,7 +41,8 @@ const SEARCH_NOTES = gql`
         id
         title
         youtube_url
-        likes
+        likesCount
+        
         contentCreater
         channelName
         likedByMe

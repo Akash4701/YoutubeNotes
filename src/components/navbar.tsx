@@ -33,9 +33,9 @@ function navbar() {
               </span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Browse</a>
-              <Button  className="text-gray-600 hover:text-gray-900 transition-colors">Upload Notes</Button>
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
+              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Home</a>
+              {/* <Button  className="text-gray-600 hover:text-gray-900 transition-colors">Upload Notes</Button> */}
+              <a href="/home" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
             </div>
              {!loader ? ( 
               <div className='flex items-center space-x-4 flex-row'>

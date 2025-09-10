@@ -36,6 +36,7 @@ model Note{
    description String?
    likes Like[]
    likedByMe  Boolean?
+   likesCount  Int? @default(0)
 
    contentCreater  String?
    channelName String?
