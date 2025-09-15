@@ -2,6 +2,7 @@
 import { useMutation } from '@apollo/client/react';
 import gql from 'graphql-tag';
 import { Calendar, ExternalLink, FileText, Heart, Play, Sparkles, User } from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
 
 function NoteCard({ note, index }: { note: any; index: number }) {
@@ -142,15 +143,17 @@ function NoteCard({ note, index }: { note: any; index: number }) {
             <Play className="w-4 h-4" />
             Watch
           </a>
-          <a
-            href={`/note/${note.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
-          >
-            <FileText className="w-4 h-4" />
-            Notes
-          </a>
+           <Link
+          key={note.id}
+          href={{
+            pathname: `/note/${note.id}`,
+            
+          }}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+        >
+          <FileText className="w-4 h-4" />
+          {note.title}
+        </Link>
         </div>
       </div>
     </div>

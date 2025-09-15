@@ -37,11 +37,14 @@ const uploadToCloudinary = async (file: File): Promise<string> => {
   formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string);
 
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
 
   const res = await axios.post(url, formData);
   
   console.log('Cloudinary response:', res);
+  console.log('object', res.data);
+  console.log('uploaded successfully to Cloudinary')
+  
   return res.data.secure_url; // ✅ Cloudinary file URL
 }
 
