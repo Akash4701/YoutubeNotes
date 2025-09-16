@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/context/AuthContext'
 import SignOut from './SignOut'
 import { Button } from './ui/button'
 import UploadNotes from './UploadNotes'
+import Link from 'next/link'
 
 function navbar() {
   const loader=useAuth().loading;
@@ -28,14 +29,14 @@ function navbar() {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <Link href='/'className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                 NoteHub
-              </span>
+              </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Home</a>
+              <a href="/home" className="text-gray-600 hover:text-gray-900 transition-colors">Home</a>
               {/* <Button  className="text-gray-600 hover:text-gray-900 transition-colors">Upload Notes</Button> */}
-              <a href="/home" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
+              <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">How it Works</a>
             </div>
              {!loader ? ( 
               <div className='flex items-center space-x-4 flex-row'>

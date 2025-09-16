@@ -41,8 +41,7 @@ const SEARCH_NOTES = gql`
         id
         title
         youtube_url
-        likesCount
-        
+        likesCount                                            
         contentCreater
         channelName
         likedByMe
@@ -87,11 +86,8 @@ const YouTubeNotesPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   
   const ITEMS_PER_PAGE = 9;
-  
-  // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Get sort type based on active section
   const getSortType = useCallback(() => {
     switch (activeSection) {
       case 'trending':
@@ -107,7 +103,6 @@ const YouTubeNotesPage = () => {
 
   const { token } = useAuth();
   
-  // Use useLazyQuery for notes
   const [getNotes, { data: notesData, loading: notesLoading, error: notesError }] = useLazyQuery(GET_NOTES);
 
   // Function to fetch notes

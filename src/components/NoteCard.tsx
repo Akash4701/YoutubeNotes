@@ -152,7 +152,7 @@ function NoteCard({ note, index }: { note: any; index: number }) {
           className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
         >
           <FileText className="w-4 h-4" />
-          {note.title}
+          View Notes
         </Link>
         </div>
       </div>

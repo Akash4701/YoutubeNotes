@@ -24,6 +24,13 @@ export const noteTypeDefs = gql`
   userId: ID!
   liked: Boolean
   }
+  type Note{
+ 
+  title:String!
+  pdf_url:String!
+
+
+  }
 
   type NotesResponse {
     notes: [Notes!]!
@@ -53,6 +60,8 @@ export const noteTypeDefs = gql`
   }
 
   extend type Query {
+  getNoteById(
+  id:ID!):Note!
     getNotes(
       page: Int = 1
       limit: Int = 10
@@ -88,6 +97,25 @@ export const noteTypeDefs = gql`
 
 export const noteResolvers = {
  Query: {
+   getNoteById:async(_:any,
+    {id}:{id:string},context:any
+   )=>{
+   
+    const note=await prisma.note.findUnique({
+      where:{
+        id
+      },
+      select:{
+        title:true,
+        pdf_url:true
+      }
+
+    })
+    if(!note){
+      throw new Error("Note not found");
+    }
+    return note;
+   },
     getNotes: async (
       _: any,
       { page, limit, sortBy }: { page: number; limit: number; sortBy: string },
