@@ -1,8 +1,34 @@
-import Image from "next/image";
+'use client'
 import { Search, Star, BookOpen, DollarSign, Users } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
+import { Bounce, toast } from "react-toastify";
+import { redirect } from "next/navigation";
 
 
 export default function Home() {
+  const loading=useAuth().loading
+
+  const handleSearch=()=>{
+    if(loading){
+       toast.warn('You are not authenticated', {
+              position: "top-right",
+              autoClose: 1999,
+              hideProgressBar: false,
+              closeOnClick: false,
+              pauseOnHover: true,
+              draggable: true,
+              progress: undefined,
+              theme: "dark",
+              transition: Bounce,
+            })
+
+    }else{
+      redirect('/home')
+    }
+
+
+
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
       
@@ -35,7 +61,7 @@ export default function Home() {
                 className="flex-1 outline-none text-gray-700"
               />
             </div>
-            <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-full hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 font-medium">
+            <button onClick={handleSearch}className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-full hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 font-medium">
               Search Notes
             </button>
           </div>

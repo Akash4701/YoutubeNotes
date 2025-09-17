@@ -60,8 +60,9 @@ const UploadNotes = () => {
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [youtubeUrl, setYoutubeUrl] = useState(""); // ✅ Separate state for YouTube URL
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [autoloader , setAutoloader] = useState(false);
+  const [submitloader,setsubmitloader]=useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -92,9 +93,10 @@ const UploadNotes = () => {
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
     console.log("Final form values:", values);
     try {
-      setLoading(true);
+      
 
       // Upload to Cloudinary
       const fileUrl = await uploadToCloudinary(values.notes);
@@ -233,7 +235,7 @@ const UploadNotes = () => {
             )}
           />
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
           </Button>
         </form>

@@ -6,6 +6,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import {client} from "@/lib/apollo-client";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import Navbar from "@/components/navbar";
+ import { ToastContainer, toast } from 'react-toastify';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+         <ToastContainer />
         <ApolloProvider client={client}>
           <AuthProvider>
             <Navbar/>

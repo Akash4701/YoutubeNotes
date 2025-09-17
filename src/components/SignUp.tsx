@@ -20,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input"
 import gql from 'graphql-tag';
 import {useMutation} from "@apollo/client/react"
+import { Bounce, toast } from 'react-toastify';
+import { Loader2 } from 'lucide-react';
 
 
 
@@ -43,6 +45,7 @@ const SignUp = () => {
   }`
     const router=useRouter();
     const [error,setError]=useState('');
+    const [loading,setloading]=useState(false);
    const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,12 +58,23 @@ const SignUp = () => {
  
  const [createUserMutation]=useMutation(CREATE_USER)
   function onSubmit(values: z.infer<typeof formSchema>) {
+    setloading(true);
    
     console.log(values)
      
       createUserWithEmailAndPassword(auth,values.email, values.password)
       .then(async (authUser) => {
-        console.log("Success. The user is created in Firebase")
+        toast.success('You have Successfully registered', {
+position: "top-right",
+autoClose: 1999,
+hideProgressBar: false,
+closeOnClick: true,
+pauseOnHover: true,
+draggable: true,
+progress: undefined,
+theme: "dark",
+transition: Bounce,
+});
         console.log('authUser',authUser);
          await createUserMutation({
         variables: {
@@ -73,10 +87,24 @@ const SignUp = () => {
         router.push("/home");
       })
       .catch(error => {
-        alert("You are already registered, Please Sign In")
+       
+        toast.error('You are already registered, Please Sign In', {
+position: "top-right",
+autoClose: 1999,
+hideProgressBar: false,
+closeOnClick: true,
+pauseOnHover: true,
+draggable: true,
+progress: undefined,
+theme: "dark",
+transition: Bounce,
+});
         console.log('error',error.message);
         
         setError(error.message)
+      }).finally(()=>{
+        setloading(false);
+
       });
     }
    
@@ -144,7 +172,16 @@ const SignUp = () => {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button className='cursor-pointer'
+         
+        type="submit"> {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {/* spinner */}
+              Signing in...
+            </>
+          ) : (
+            "Submit"
+          )}</Button>
       </form>
     </Form>
     

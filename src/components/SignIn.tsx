@@ -1,4 +1,3 @@
-
 'use client'
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,61 +12,73 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-
-
+import { Bounce, toast } from 'react-toastify';
+import { Loader2 } from "lucide-react"; // 👈 spinner icon from lucide-react
 
 const formSchema = z.object({
   email: z.string().email("Invalid email format"),
- password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  
+  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
 })
 
-
-
-
 const SignIn = () => {
-    const router=useRouter();
-    const [error,setError]=useState('');
-   const form = useForm<z.infer<typeof formSchema>>({
+  const router = useRouter();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // 👈 state for loader
+
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
-      password:"",
-      
+      password: "",
     },
   })
- 
-  // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
-   
-    console.log(values)
-     
-      signInWithEmailAndPassword(auth,values.email, values.password)
-      .then(authUser => {
-        console.log("Success. The user is signed in Firebase")
-        console.log('authUser',authUser);
-        router.push('/home');
-      })
-      .catch(error => {
-          alert("Invalid credentials, Please Sign Up if you are a new user")
-        
-        setError(error.message)
-      });
-    }
-   
-  
-  
 
+  // Submit handler
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true); // start loader
+    try {
+      const authUser = await signInWithEmailAndPassword(auth, values.email, values.password);
+
+      toast.success('You have Successfully logged in', {
+        position: "top-right",
+        autoClose: 1999,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        transition: Bounce,
+      });
+
+      console.log('authUser', authUser);
+      router.push('/home');
+    } catch (error: any) {
+      toast.error('You have not registered yet', {
+        position: "top-right",
+        autoClose: 1999,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        transition: Bounce,
+      });
+      setError(error.message);
+    } finally {
+      setLoading(false); // stop loader
+    }
+  }
 
   return (
-     <Form {...form}>
+    <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
@@ -78,7 +89,6 @@ const SignIn = () => {
               <FormControl>
                 <Input placeholder="Enter your email" {...field} />
               </FormControl>
-             
               <FormMessage />
             </FormItem>
           )}
@@ -90,14 +100,23 @@ const SignIn = () => {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your password" {...field} />
+                <Input placeholder="Enter your password" type="password" {...field} />
               </FormControl>
-             
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+
+        <Button className='cursor-pointer' type="submit" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {/* spinner */}
+              Signing in...
+            </>
+          ) : (
+            "Submit"
+          )}
+        </Button>
       </form>
     </Form>
   )

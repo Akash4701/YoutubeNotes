@@ -5,6 +5,7 @@ import { useQuery, useLazyQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 import NoteCard from '@/components/NoteCard';
 import { useAuth } from '@/lib/context/AuthContext';
+import { Bounce, toast } from 'react-toastify';
 
 // GraphQL Queries with offset pagination
 const GET_NOTES = gql`
@@ -116,6 +117,18 @@ const YouTubeNotesPage = () => {
         },
         
       });
+    }else{
+      toast.warn('🦄 Wow so easy!', {
+position: "top-right",
+autoClose: 1999,
+hideProgressBar: false,
+closeOnClick: false,
+pauseOnHover: true,
+draggable: true,
+progress: undefined,
+theme: "dark",
+transition: Bounce,
+});
     }
   }, [token, currentPage, getNotes, getSortType]);
 
