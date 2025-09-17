@@ -30,7 +30,7 @@ function navbar() {
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <Link href='/'className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                NoteHub
+                TubeNoter
               </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">

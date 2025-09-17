@@ -6,18 +6,18 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-6">
         <div className="text-center">
-          <div className="inline-flex items-center space-x-2 bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium mb-8">
+          <div className="inline-flex items-center space-x-2 bg-purple-100 text-purple-800 px-4  rounded-full text-sm font-medium mb-8">
             <Star className="w-4 h-4" />
-            <span>The Future of Learning from YouTube</span>
+            <span className="text-lg">The Future of Learning from YouTube</span>
           </div>
           
           <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Turn YouTube Videos Into
+            Notes That Capture What AI Misses: 
             <br />
             <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Premium Study Notes
+             Diagrams, Formulas & Code
             </span>
           </h1>
           
