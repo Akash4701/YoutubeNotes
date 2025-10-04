@@ -74,13 +74,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 {(slots) => {
                     const {
                         CurrentPageInput,
-                        Download,   // ❌ we will NOT use
+                        
                         EnterFullScreen,
                         GoToNextPage,
                         GoToPreviousPage,
                         NumberOfPages,
-                        Open,       // ❌ optional: remove open file button
-                        Print,      // ❌ we will NOT use
+                      
                         ShowSearchPopover,
                         Zoom,
                         ZoomIn,
@@ -162,7 +161,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             
             {/* Comments Section */}
             <div ref={commentsRef}>
-                <Comments />
+                <Comments noteId={id}/>
             </div>
         </div>
     );

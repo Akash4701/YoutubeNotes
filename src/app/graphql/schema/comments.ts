@@ -1,15 +1,16 @@
 import { prisma } from "@/lib/db";
 import { gql } from "graphql-tag";
 
-export const userTypeDefs = gql`
+export const commentTypeDefs = gql`
+scalar DateTime
   type Comment {
     id: ID!
     content: String!
-    authorId:ID!
+    authorId:String!
     noteId :ID!
     parentId:ID
-    createdAt:String!
-    updatedAt:String!    
+    createdAt:DateTime
+    updatedAt:DateTime 
   }
 
   extend type Query {
@@ -17,11 +18,11 @@ export const userTypeDefs = gql`
   }
 
   extend type Mutation {
-    createComment(content:String,noteId:String,parentId:String):Boolean
+    createComment(content:String,noteId:ID,parentId:String):Comment
   }
 `;
 
-export const userResolvers = {
+export const commentResolvers = {
  Query: {
 
     hello: () => "Hello world!",
@@ -32,21 +33,22 @@ export const userResolvers = {
       if(!context.user){
           throw new Error("Not authenticated");
       }
+      console.log('authorId',context.user.uid);
+      const user = await prisma.user.findUnique({ where: { id: context.user.uid } });
+console.log("Matched user:", user);
+      console.log('authorId',typeof(context.user.uid));
+
       
            const comment=await prisma.comment.create({
             data:{
                 content,
-                authorId: context.user.uid,
+                authorId: context.user.user_id,
                 noteId,
                 ...(parentId && { parentId })
             }
            })
 
-           return true;
-           
-    
-    
-    
+           return comment;
         }
   },
 };
