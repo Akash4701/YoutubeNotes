@@ -2,31 +2,62 @@ import { prisma } from "@/lib/db";
 import { gql } from "graphql-tag";
 
 export const commentTypeDefs = gql`
-scalar DateTime
+  scalar DateTime
+
   type Comment {
     id: ID!
     content: String!
-    authorId:String!
-    noteId :ID!
-    parentId:ID
-    createdAt:DateTime
-    updatedAt:DateTime 
+    authorId: String!
+    noteId: ID!
+    parentId: ID
+    createdAt: DateTime
+    updatedAt: DateTime
   }
 
+  type Reply{
+    id: ID!
+    content: String!
+    authorId: String!
+    replies:[Reply]
+  
+    parentId: ID
+    createdAt: DateTime
+    updatedAt: DateTime
+    }
+
   extend type Query {
-   hello: String
+    fetchAllComments(noteId: ID!): [Reply]
   }
 
   extend type Mutation {
-    createComment(content:String,noteId:ID,parentId:String):Comment
+    createComment(content: String!, noteId: ID!, parentId: String): Comment
   }
 `;
 
 export const commentResolvers = {
  Query: {
 
-    hello: () => "Hello world!",
-  },
+  
+
+    fetchAllComments: async(_:any,{noteId}:{noteId:string})=>{
+      return await prisma.comment.findMany({
+        where:{
+          noteId
+        },
+        include:{
+          replies:{
+            orderBy:{
+              createdAt:'asc'
+          }
+        }
+      },
+    orderBy:{
+      createdAt:'desc'
+    }
+
+    })
+  }
+},
   Mutation: {
     
     createComment:async(_:any,{content,noteId,parentId}:{content:string,noteId:string,parentId:string},context:any)=>{
