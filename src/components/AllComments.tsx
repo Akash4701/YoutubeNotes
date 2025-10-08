@@ -1,28 +1,41 @@
 import React, { useState } from 'react';
-import { MessageCircle, User, Clock, Send, X } from 'lucide-react';
+import { MessageCircle, User, Clock, Send, X, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 
 type Comment = {
   id: string;
   content: string;
-  noteId: string;
+  noteId?: string;
   parentId: string | null;
+  replies: Comment[];
   authorId: string;
   createdAt: string;
   updatedAt: string;
-  replies?: Comment[];
+  hasMoreReplies?: boolean;
+  replyCount?: number;
 };
 
-type AllCommentsProps = {
+type CommentItemProps = {
   comment: Comment;
+  depth?: number;
   onReply?: (content: string, parentId: string) => Promise<void>;
+  onFetchMore?: (parentId: string) => Promise<void>;
   isSubmitting?: boolean;
+  isFetchingMore?: boolean;
 };
 
-function AllComments({ comment, onReply, isSubmitting = false }: AllCommentsProps) {
+export default function CommentItem({ 
+  comment, 
+  depth = 0, 
+  onReply, 
+  onFetchMore,
+  isSubmitting = false,
+  isFetchingMore = false 
+}: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Format the date to a more readable format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -43,12 +56,10 @@ function AllComments({ comment, onReply, isSubmitting = false }: AllCommentsProp
     });
   };
 
-  // Get initials from authorId for avatar
   const getInitials = (authorId: string) => {
     return authorId.substring(0, 2).toUpperCase();
   };
 
-  // Generate a consistent color based on authorId
   const getAvatarColor = (authorId: string) => {
     const colors = [
       'bg-blue-500',
@@ -77,93 +88,132 @@ function AllComments({ comment, onReply, isSubmitting = false }: AllCommentsProp
     setIsReplying(false);
   };
 
+  const handleFetchMore = async () => {
+    if (!onFetchMore) return;
+    setIsLoadingMore(true);
+    await onFetchMore(comment.id);
+    setIsLoadingMore(false);
+  };
+
+  const hasReplies = comment.replies && comment.replies.length > 0;
+  const showFetchMore = comment.hasMoreReplies ;
+  const maxDepth = 5;
+  const shouldIndent = depth < maxDepth;
+
   return (
-    <div className="group relative bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-blue-300 transition-all duration-300 ease-in-out">
-      {/* Decorative gradient border on hover */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-      
-      <div className="relative flex gap-4">
-        {/* Avatar */}
-        <div className={`flex-shrink-0 w-12 h-12 ${getAvatarColor(comment.authorId)} rounded-full flex items-center justify-center text-white font-bold shadow-md`}>
-          {getInitials(comment.authorId)}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-500" />
-              <span className="font-semibold text-gray-900">{comment.authorId}</span>
-            </div>
-            <span className="text-gray-400">•</span>
-            <div className="flex items-center gap-1 text-gray-500">
-              <Clock className="w-3.5 h-3.5" />
-              <span className="text-sm">{formatDate(comment.createdAt)}</span>
-            </div>
+    <div className={`relative ${shouldIndent ? 'ml-0' : 'ml-0'}`}>
+      <div className="group relative bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-300 transition-all duration-300">
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+        
+        <div className="relative flex gap-3">
+          <div className={`flex-shrink-0 w-10 h-10 ${getAvatarColor(comment.authorId)} rounded-full flex items-center justify-center text-white font-bold shadow-md text-sm`}>
+            {getInitials(comment.authorId)}
           </div>
 
-          {/* Comment Text */}
-          <p className="text-gray-700 leading-relaxed mb-3 break-words">
-            {comment.content}
-          </p>
-
-          {/* Footer Actions */}
-          <div className="flex items-center gap-4 text-sm">
-            {onReply && (
-              <button 
-                onClick={() => setIsReplying(!isReplying)}
-                className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Reply</span>
-              </button>
-            )}
-            
-            <button className="text-gray-500 hover:text-red-600 transition-colors">
-              Report
-            </button>
-          </div>
-
-          {/* Reply Input Section */}
-          {isReplying && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 animate-in fade-in slide-in-from-top-2 duration-200">
-              <textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={`Reply to ${comment.authorId}...`}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows={3}
-                autoFocus
-              />
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={handleSubmitReply}
-                  disabled={!replyText.trim() || isSubmitting}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Sending...' : 'Send'}</span>
-                </button>
-                <button
-                  onClick={handleCancelReply}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Cancel</span>
-                </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <User className="w-3.5 h-3.5 text-gray-500" />
+                <span className="font-semibold text-gray-900 text-sm">{comment.authorId}</span>
               </div>
+              <span className="text-gray-400 text-xs">•</span>
+              <div className="flex items-center gap-1 text-gray-500">
+                <Clock className="w-3 h-3" />
+                <span className="text-xs">{formatDate(comment.createdAt)}</span>
+              </div>
+              {depth > 0 && (
+                <>
+                  <span className="text-gray-400 text-xs">•</span>
+                  <span className="text-xs text-blue-600 font-medium">Reply</span>
+                </>
+              )}
             </div>
-          )}
+
+            <p className="text-gray-700 leading-relaxed mb-3 break-words text-sm">
+              {comment.content}
+            </p>
+
+            <div className="flex items-center gap-4 text-xs flex-wrap">
+              {onReply && (
+                <button 
+                  onClick={() => setIsReplying(!isReplying)}
+                  className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors font-medium"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Reply</span>
+                </button>
+              )}
+              
+              {hasReplies && (
+                <button 
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  className="flex items-center gap-1.5 text-gray-500 hover:text-purple-600 transition-colors font-medium"
+                >
+                  {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                  <span>{isCollapsed ? 'Show' : 'Hide'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}</span>
+                </button>
+              )}
+
+              {showFetchMore && !isCollapsed && (
+                <button 
+                  onClick={handleFetchMore}
+                  disabled={isLoadingMore}
+                  className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <span>{isLoadingMore ? 'Loading...' : `Fetch More (${comment.replyCount || 0} more)`}</span>
+                </button>
+              )}
+            </div>
+
+            {isReplying && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={`Reply to ${comment.authorId}...`}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={handleSubmitReply}
+                    disabled={!replyText.trim() || isSubmitting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{isSubmitting ? 'Sending...' : 'Send'}</span>
+                  </button>
+                  <button
+                    onClick={handleCancelReply}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-xs font-medium"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Cancel</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Thread indicator for nested comments */}
-      {comment.parentId && (
-        <div className="absolute left-6 top-0 w-0.5 h-full bg-gradient-to-b from-blue-400 to-transparent opacity-30"></div>
+      {hasReplies && !isCollapsed && (
+        <div className={`mt-3 ${shouldIndent ? 'ml-8 pl-4 border-l-2 border-blue-200' : 'ml-4'} space-y-3`}>
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              onReply={onReply}
+              onFetchMore={onFetchMore}
+              isSubmitting={isSubmitting}
+              isFetchingMore={isFetchingMore}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
-
-export default AllComments;

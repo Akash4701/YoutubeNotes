@@ -14,19 +14,21 @@ export const commentTypeDefs = gql`
     updatedAt: DateTime
   }
 
-  type Reply{
+  type Reply {
     id: ID!
     content: String!
     authorId: String!
-    replies:[Reply]
-  
+    replies: [Reply]
     parentId: ID
     createdAt: DateTime
     updatedAt: DateTime
-    }
+    hasMoreReplies: Boolean!
+    replyCount: Int!
+  }
 
   extend type Query {
     fetchAllComments(noteId: ID!): [Reply]
+    fetchNestedReplies(parentId: ID!, depth: Int): [Reply]
   }
 
   extend type Mutation {
@@ -34,52 +36,129 @@ export const commentTypeDefs = gql`
   }
 `;
 
-export const commentResolvers = {
- Query: {
+// Helper function to fetch replies recursively with depth limit
+async function fetchRepliesWithDepth(
+  parentId: string,
+  currentDepth: number = 0,
+  maxDepth: number =2
+): Promise<any[]> {
+  const replies = await prisma.comment.findMany({
+    where: { parentId },
+    orderBy: { createdAt: 'asc' }
+  });
 
-  
+  const repliesWithNesting = await Promise.all(
+    replies.map(async (reply) => {
+      const replyCount = await prisma.comment.count({
+        where: { parentId: reply.id }
+      });
 
-    fetchAllComments: async(_:any,{noteId}:{noteId:string})=>{
-      return await prisma.comment.findMany({
-        where:{
-          noteId
-        },
-        include:{
-          replies:{
-            orderBy:{
-              createdAt:'asc'
-          }
-        }
-      },
-    orderBy:{
-      createdAt:'desc'
-    }
+      let nestedReplies = [];
+      let hasMoreReplies = false;
 
-    })
-  }
-},
-  Mutation: {
-    
-    createComment:async(_:any,{content,noteId,parentId}:{content:string,noteId:string,parentId:string},context:any)=>{
-      if(!context.user){
-          throw new Error("Not authenticated");
+      if (currentDepth < maxDepth) {
+        nestedReplies = await fetchRepliesWithDepth(
+          reply.id,
+          currentDepth + 1,
+          maxDepth
+        );
+         hasMoreReplies = replyCount > nestedReplies.length;
+      } else {
+        // At max depth, check if there are more replies to fetch
+         hasMoreReplies = replyCount > 0;
       }
-      console.log('authorId',context.user.uid);
-      const user = await prisma.user.findUnique({ where: { id: context.user.uid } });
-console.log("Matched user:", user);
-      console.log('authorId',typeof(context.user.uid));
 
-      
-           const comment=await prisma.comment.create({
-            data:{
-                content,
-                authorId: context.user.user_id,
-                noteId,
-                ...(parentId && { parentId })
-            }
-           })
+      return {
+        id: reply.id,
+        content: reply.content,
+        authorId: reply.authorId,
+        parentId: reply.parentId,
+        createdAt: reply.createdAt,
+        updatedAt: reply.updatedAt,
+        replies: nestedReplies,
+        hasMoreReplies:replyCount>0,
+        replyCount
+      };
+    })
+  );
 
-           return comment;
+  return repliesWithNesting;
+}
+
+export const commentResolvers = {
+  Query: {
+    fetchAllComments: async (_: any, { noteId }: { noteId: string }) => {
+      // Fetch top-level comments (parentId is null)
+      const topLevelComments = await prisma.comment.findMany({
+        where: {
+          noteId,
+          parentId: null
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
+      });
+
+      // For each top-level comment, fetch nested replies up to depth 2
+      const commentsWithReplies = await Promise.all(
+        topLevelComments.map(async (comment) => {
+          const replyCount = await prisma.comment.count({
+            where: { parentId: comment.id }
+          });
+
+          const replies = await fetchRepliesWithDepth(comment.id, 0, 2);
+
+          return {
+            id: comment.id,
+            content: comment.content,
+            authorId: comment.authorId,
+            parentId: comment.parentId,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            replies,
+            hasMoreReplies:replyCount>0,
+            replyCount
+          };
+        })
+      );
+
+      return commentsWithReplies;
+    },
+
+    fetchNestedReplies: async (
+      _: any,
+      { parentId, depth = 2 }: { parentId: string; depth?: number }
+    ) => {
+      // Fetch replies for a specific parent, going deeper
+      const replies = await fetchRepliesWithDepth(parentId, 0, depth);
+      return replies;
+    }
   },
+
+  Mutation: {
+    createComment: async (
+      _: any,
+      {
+        content,
+        noteId,
+        parentId
+      }: { content: string; noteId: string; parentId?: string },
+      context: any
+    ) => {
+      if (!context.user) {
+        throw new Error("Not authenticated");
+      }
+
+      const comment = await prisma.comment.create({
+        data: {
+          content,
+          authorId: context.user.user_id,
+          noteId,
+          ...(parentId && { parentId })
+        }
+      });
+
+      return comment;
+    }
+  }
 };
