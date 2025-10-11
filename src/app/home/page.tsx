@@ -16,6 +16,7 @@ const GET_NOTES = gql`
         title
         youtube_url
         likesCount
+        savedByMe
         
         likedByMe
         contentCreater
@@ -49,6 +50,7 @@ const SEARCH_NOTES = gql`
         thumbnail
         pdf_url
         userId
+        savedByMe
         createdAt
         updatedAt
       }
@@ -118,7 +120,7 @@ const YouTubeNotesPage = () => {
         
       });
     }else{
-      toast.warn('🦄 Wow so easy!', {
+      toast.warn('You are not registered yet!Please register', {
 position: "top-right",
 autoClose: 1999,
 hideProgressBar: false,

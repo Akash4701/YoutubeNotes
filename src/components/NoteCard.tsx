@@ -1,13 +1,14 @@
 'use client'
 import { useMutation } from '@apollo/client/react';
 import gql from 'graphql-tag';
-import { Calendar, ExternalLink, FileText, Heart, Play, Sparkles, User } from 'lucide-react';
+import { Calendar, ExternalLink, FileText, Heart, Play, Save, SaveIcon, Sparkles, User } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
 
 function NoteCard({ note, index }: { note: any; index: number }) {
   const [liked, setLiked] = useState<boolean>(note.likedByMe);
   const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
+  const [saved,setSaved]=useState<boolean>(false)
   console.log('likesCount',likesCount,note.title)
 
 
@@ -17,12 +18,42 @@ function NoteCard({ note, index }: { note: any; index: number }) {
    }
   `
 
+  const SAVE_NOTE=gql`
+  mutation SaveNote($noteId:ID!,$saved:Boolean){
+  saveNote(noteId:$noteId,saved:$saved)
+  }
+  `
+
   const [likeNoteMutation, { loading: likeLoading }] = useMutation(LIKE_NOTE);
+  const [saveNoteMutation,{loading:saveLoading}]=useMutation(SAVE_NOTE);
   // Update local state when note prop changes (after reload/refetch)
   useEffect(() => {
     setLiked(note.likedByMe);
+    setSaved(note.savedByMe);
     setLikesCount(note.likesCount || 0);
-  }, [note.likedByMe, note.likesCount]);
+  }, [note.likedByMe, note.likesCount,note.savedByMe]);
+
+  const handleSaveToggle=async()=>{
+    const newsavedState=!saved;
+    setSaved(newsavedState);
+    try{
+    await saveNoteMutation({
+      variables:{
+        noteId:note.id,
+        saved:newsavedState
+
+      },
+      optimisticResponse:{
+        saveNote:newsavedState
+      }
+    })
+    console.log('Save operation is successful');
+  }catch(err){
+    console.log('saved opeartion si not successful',err.message);
+  }
+
+
+  }
 
   const handleLikeToggle = async () => {
   const newLikedState = !liked;
@@ -52,7 +83,7 @@ function NoteCard({ note, index }: { note: any; index: number }) {
     });
 
     console.log('Like operation successful');
-  } catch (err) {
+  } catch (err:any) {
     console.log('Like mutation failed:', err.message);
     
     // Revert optimistic updates on error
@@ -100,7 +131,25 @@ function NoteCard({ note, index }: { note: any; index: number }) {
           </button>
           <span className="font-semibold">{likesCount}</span>
         </div>
+        
       </div>
+      <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-md text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 border border-white/20">
+          <button 
+            onClick={handleSaveToggle}
+            disabled={saveLoading}
+            className="flex items-center gap-1 transition-all duration-200 hover:scale-110"
+          >
+            <SaveIcon
+              className={`w-4 h-4 transition-all duration-200 ${
+                saved 
+                  ? "text-red-500 fill-red-500" 
+                  : "text-gray-300 hover:text-red-400"
+              } ${saveLoading ? 'animate-pulse' : ''}`}
+            />
+          </button>
+          
+        </div>
+      
 
       <div className="p-6 relative">
         <h3 className="font-bold text-xl mb-3 text-gray-900 leading-tight group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 group-hover:bg-clip-text transition-all duration-300">

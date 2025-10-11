@@ -12,12 +12,16 @@ export const noteTypeDefs = gql`
     contentCreater: String
     thumbnail: String
     channelName: String
+    likes:[likes]!
+    savedByMe:Boolean
+   
     
     createdAt: String!
     updatedAt: String!
     likedByMe:Boolean!
   }
 
+ 
   type likes{
   id:ID!
   noteId: ID!
@@ -84,6 +88,11 @@ export const noteTypeDefs = gql`
   liked: Boolean
 ):Boolean!
 
+saveNote(
+noteId:ID!
+saved:Boolean
+):Boolean!
+
     createNotes(
       title: String!
       youtube_url: String!
@@ -118,12 +127,14 @@ export const noteResolvers = {
    },
     getNotes: async (
       _: any,
-      { page, limit, sortBy }: { page: number; limit: number; sortBy: string },
+      { page, limit, sortBy,userId }: { page: number; limit: number; sortBy: string,userId:string },
       context: any
     ) => {
+      
       if (!context.user) {
         throw new Error("Not authenticated");
       }
+      const whereClause:any=userId?{userId}:{};
 
       const validLimit = Math.min(Math.max(limit, 1), 50);
       const validPage = Math.max(page, 1);
@@ -158,25 +169,32 @@ export const noteResolvers = {
 
         // Fetch notes with likes count
         const notes = await prisma.note.findMany({
+          where:whereClause,
           skip: offset,
           take: validLimit,
           orderBy: getOrderBy(sortBy),
           include: {
-            
-          
             likes: {
               where: { userId: context.user.uid, liked: true }
+            },
+            savedByMe:{
+              where:{
+                userId:context.user.uid
+              }
             }
           },
         });
 
         const formattedNotes = notes.map((note) => ({
           ...note,
+          savedByMe:note.savedByMe.length>0,
           
-          likedByMe: note.likes.length > 0 && note.likes[0].liked === true, // count only "liked: true" for current user
+          likedByMe: note.likes.length > 0, // count only "liked: true" for current user
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
+
+            console.log('formatted nOtes',formattedNotes);
 
         return {
           notes: formattedNotes,
@@ -186,6 +204,7 @@ export const noteResolvers = {
           hasNextPage: validPage < totalPages,
           hasPreviousPage: validPage > 1,
         };
+    
       } catch (error) {
         console.error("Error fetching notes:", error);
         throw new Error("Failed to fetch notes");
@@ -248,7 +267,7 @@ export const noteResolvers = {
         const formattedNotes = notes.map((note) => ({
           ...note,
          
-          likedByMe:  note.likes.length > 0 , // count only "liked: true" for current user
+          likedByMe:  note.likes.length > 0 , 
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
@@ -384,12 +403,45 @@ export const noteResolvers = {
           console.log('Liked successfully');
           return true
 
-        }catch(err){
+        }catch(err:any){
           console.log('like status not working',err.message)
         }
 
+       
 
-      }
+
+      },
+     saveNote: async (
+  _: any,
+  { noteId, saved }: { noteId: string; saved: boolean },
+  context: any
+) => {
+  if (!context.user) throw new Error("Not authenticated");
+
+  try {
+    if (saved) {
+      await prisma.savedNote.create({
+        data: {
+          userId: context.user.uid,
+          noteId,
+        },
+      });
+    } else {
+      await prisma.savedNote.deleteMany({
+        where: {
+          userId: context.user.uid,
+          noteId,
+        },
+      });
+    }
+
+    return true;
+  } catch (err: any) {
+    console.error("Error saving notes:", err.message);
+    throw new Error("Failed to save notes");
+  }
+},
+
 
     
   }

@@ -23,6 +23,7 @@ model User{
   avgRating  Float?
   totalLikes  Int? @default(0)
   notes Note[]
+  savedByMe SavedNote[]
   comments Comment[]
   likes Like[]
   connections Connection[] @relation("ReceiverUser")
@@ -37,7 +38,7 @@ model Note{
    likes Like[]
    likedByMe  Boolean?
    likesCount  Int? @default(0)
-
+  savedByMe   SavedNote[]
    contentCreater  String?
    channelName String?
    thumbnail String?
@@ -58,8 +59,15 @@ model Note{
     liked Boolean @default(false)
 
     @@unique([userId,noteId])
+  }
+  model SavedNote{
+    id String @id @default(uuid())
+    userId String
+    user User @relation(fields:[userId],references:[id])
+    noteId String
+    note Note @relation(fields:[noteId],references:[id])
 
-
+    @@unique([userId,noteId])
 
   }
  model Comment {
