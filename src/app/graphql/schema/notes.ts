@@ -127,7 +127,7 @@ export const noteResolvers = {
    },
     getNotes: async (
       _: any,
-      { page, limit, sortBy,userId }: { page: number; limit: number; sortBy: string,userId:string },
+      { page, limit, sortBy,userId,saved }: { page: number; limit: number; sortBy: string,userId:string,saved:boolean },
       context: any
     ) => {
       
@@ -135,6 +135,11 @@ export const noteResolvers = {
         throw new Error("Not authenticated");
       }
       const whereClause:any=userId?{userId}:{};
+          if (saved) {
+      whereClause.savedByMe = {
+        some: { userId: context.user.uid },
+      };
+    }
 
       const validLimit = Math.min(Math.max(limit, 1), 50);
       const validPage = Math.max(page, 1);
@@ -188,13 +193,23 @@ export const noteResolvers = {
         const formattedNotes = notes.map((note) => ({
           ...note,
           savedByMe:note.savedByMe.length>0,
-          
           likedByMe: note.likes.length > 0, // count only "liked: true" for current user
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
 
-            console.log('formatted nOtes',formattedNotes);
+            console.log('formatted notes',formattedNotes);
+
+            
+                  return {
+          notes: formattedNotes,
+          totalCount,
+          totalPages,
+          currentPage: validPage,
+          hasNextPage: validPage < totalPages,
+          hasPreviousPage: validPage > 1,
+        };
+            }
 
         return {
           notes: formattedNotes,

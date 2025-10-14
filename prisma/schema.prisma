@@ -16,10 +16,11 @@ datasource db {
 model User{
   id    String   @id @unique
   email  String @unique
+  profilePic   String
   password String
   name String
-  skills String[]
   youtube_url  String? @unique
+  links     String[]
   avgRating  Float?
   totalLikes  Int? @default(0)
   notes Note[]

@@ -59,8 +59,6 @@ function NoteCard({ note, index }: { note: any; index: number }) {
   const newLikedState = !liked;
   const previousLiked = liked;
   const previousLikesCount = likesCount;
-  
-  // Optimistically update UI first
   setLiked(newLikedState);
   setLikesCount(prev => {
     if (newLikedState && !previousLiked) {
@@ -70,7 +68,6 @@ function NoteCard({ note, index }: { note: any; index: number }) {
     }
     return prev;
   });
-
   try {
     await likeNoteMutation({
       variables: {
