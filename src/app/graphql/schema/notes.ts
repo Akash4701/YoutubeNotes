@@ -70,6 +70,8 @@ export const noteTypeDefs = gql`
       page: Int = 1
       limit: Int = 10
       sortBy: SortOrder = CREATED_AT_DESC
+      userId: ID
+      saved: Boolean
     ): NotesResponse!
     
     searchNotes(
@@ -106,75 +108,86 @@ saved:Boolean
 
 export const noteResolvers = {
  Query: {
-   getNoteById:async(_:any,
-    {id}:{id:string},context:any
-   )=>{
+   getNoteById: async(
+    _: any,
+    { id }: { id: string },
+    context: any
+   ) => {
    
-    const note=await prisma.note.findUnique({
-      where:{
+    const note = await prisma.note.findUnique({
+      where: {
         id
       },
-      select:{
-        title:true,
-        pdf_url:true
+      select: {
+        title: true,
+        pdf_url: true
       }
-
-    })
-    if(!note){
+    });
+    
+    if (!note) {
       throw new Error("Note not found");
     }
     return note;
    },
+   
     getNotes: async (
       _: any,
-      { page, limit, sortBy,userId,saved }: { page: number; limit: number; sortBy: string,userId:string,saved:boolean },
+      { page, limit, sortBy, userId, saved }: { 
+        page: number; 
+        limit: number; 
+        sortBy: string;
+        userId?: string;
+        saved?: boolean;
+      },
       context: any
     ) => {
       
       if (!context.user) {
         throw new Error("Not authenticated");
       }
-      const whereClause:any=userId?{userId}:{};
-          if (saved) {
-      whereClause.savedByMe = {
-        some: { userId: context.user.uid },
-      };
-    }
+      
+      const whereClause: any = userId ? { userId } : {};
+      
+      if (saved) {
+        whereClause.savedByMe = {
+          some: { userId: context.user.uid },
+        };
+      }
 
       const validLimit = Math.min(Math.max(limit, 1), 50);
       const validPage = Math.max(page, 1);
       const offset = (validPage - 1) * validLimit;
 
-      const getOrderBy = (sortBy: string) => {
+      const getOrderBy = (sortBy: string): any => {
         switch (sortBy) {
           case "LIKES_DESC":
-            return [{ likes : { _count: "desc" } }];
+            return { likes: { _count: "desc" } };
           case "LIKES_ASC": 
-            return [{ likes: { _count: "asc" } }];
+            return { likes: { _count: "asc" } };
           case "CREATED_AT_DESC":
-            return [{ createdAt: "desc" }];
+            return { createdAt: "desc" };
           case "CREATED_AT_ASC":
-            return [{ createdAt: "asc" }];
+            return { createdAt: "asc" };
           case "UPDATED_AT_DESC":
-            return [{ updatedAt: "desc" }];
+            return { updatedAt: "desc" };
           case "UPDATED_AT_ASC":
-            return [{ updatedAt: "asc" }];
+            return { updatedAt: "asc" };
           case "TITLE_ASC":
-            return [{ title: "asc" }];
+            return { title: "asc" };
           case "TITLE_DESC":
-            return [{ title: "desc" }];
+            return { title: "desc" };
           default:
-            return [{ createdAt: "desc" }];
+            return { createdAt: "desc" };
         }
       };
 
       try {
-        const totalCount = await prisma.note.count();
+        const totalCount = await prisma.note.count({ where: whereClause });
         const totalPages = Math.ceil(totalCount / validLimit);
 
         // Fetch notes with likes count
         const notes = await prisma.note.findMany({
-          where:whereClause,
+          where: whereClause,
           skip: offset,
           take: validLimit,
           orderBy: getOrderBy(sortBy),
@@ -182,9 +195,9 @@ export const noteResolvers = {
             likes: {
               where: { userId: context.user.uid, liked: true }
             },
-            savedByMe:{
-              where:{
-                userId:context.user.uid
+            savedByMe: {
+              where: {
+                userId: context.user.uid
               }
             }
           },
@@ -192,24 +205,13 @@ export const noteResolvers = {
 
         const formattedNotes = notes.map((note) => ({
           ...note,
-          savedByMe:note.savedByMe.length>0,
-          likedByMe: note.likes.length > 0, // count only "liked: true" for current user
+          savedByMe: note.savedByMe.length > 0,
+          likedByMe: note.likes.length > 0,
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
 
-            console.log('formatted notes',formattedNotes);
-
-            
-                  return {
-          notes: formattedNotes,
-          totalCount,
-          totalPages,
-          currentPage: validPage,
-          hasNextPage: validPage < totalPages,
-          hasPreviousPage: validPage > 1,
-        };
-            }
+        console.log('formatted notes', formattedNotes);
 
         return {
           notes: formattedNotes,
@@ -219,7 +221,6 @@ export const noteResolvers = {
           hasNextPage: validPage < totalPages,
           hasPreviousPage: validPage > 1,
         };
-    
       } catch (error) {
         console.error("Error fetching notes:", error);
         throw new Error("Failed to fetch notes");
@@ -269,20 +270,17 @@ export const noteResolvers = {
           where: searchCondition,
           skip: offset,
           take: validLimit,
-          orderBy: [{ createdAt: "desc" }],
+          orderBy: { createdAt: "desc" },
           include: {
-           
-          likes:{
-            where: { userId: context.user.uid, liked: true }
-          }
-
+            likes: {
+              where: { userId: context.user.uid, liked: true }
+            }
           },
         });
 
         const formattedNotes = notes.map((note) => ({
           ...note,
-         
-          likedByMe:  note.likes.length > 0 , 
+          likedByMe: note.likes.length > 0, 
           createdAt: note.createdAt.toISOString(),
           updatedAt: note.updatedAt.toISOString(),
         }));
@@ -303,7 +301,7 @@ export const noteResolvers = {
   },
 
   Mutation: {
-    createNotes: async (
+    createNotes: async(
       _: any,
       { 
         title, 
@@ -351,113 +349,84 @@ export const noteResolvers = {
       }
     },
 
-    likeNotes:async(_:any,
-      {
-        noteId,liked
-      }:{
-        noteId:string,liked:boolean
-      },context:any)=>{
-        if(!context.user){
-          throw new Error("Not authenticated");
-        }
-         console.log('object, noteId,liked', noteId,liked);
+    likeNotes: async(
+      _: any,
+      { noteId, liked }: { noteId: string; liked: boolean },
+      context: any
+    ) => {
+      if (!context.user) {
+        throw new Error("Not authenticated");
+      }
+      
+      console.log('object, noteId, liked', noteId, liked);
 
-        try{
-          const results=await prisma.$transaction([
-              prisma.like.upsert({
-            where:{
-              userId_noteId:{
-                 noteId,
-              userId:context.user.uid
-
+      try {
+        await prisma.$transaction([
+          prisma.like.upsert({
+            where: {
+              userId_noteId: {
+                noteId,
+                userId: context.user.uid
               }
-              
-             
             },
-            update:{
+            update: {
               liked
-
             },
-            create:{
+            create: {
               noteId,
-              userId:context.user.uid,
+              userId: context.user.uid,
               liked
             }
-
           }),
-          liked ?(
-              prisma.note.update({
-              where:{
-                id:noteId
-              },
-              data:{
-                likesCount:{
-                  increment:1
-                }
+          prisma.note.update({
+            where: {
+              id: noteId
+            },
+            data: {
+              likesCount: {
+                [liked ? 'increment' : 'decrement']: 1
               }
-             })
-            )
+            }
+          })
+        ]);
+       
+        console.log('Liked successfully');
+        return true;
+      } catch (err: any) {
+        console.log('like status not working', err.message);
+        throw new Error('Failed to update like status');
+      }
+    },
+    
+    saveNote: async (
+      _: any,
+      { noteId, saved }: { noteId: string; saved: boolean },
+      context: any
+    ) => {
+      if (!context.user) throw new Error("Not authenticated");
 
-          :(
-             prisma.note.update({
-              where:{
-                id:noteId
-              },
-              data:{
-                likesCount:{
-                  decrement:1
-                }
-              }
-            })
-          )
-         
-
-
-          ])
-         
-          console.log('Liked successfully');
-          return true
-
-        }catch(err:any){
-          console.log('like status not working',err.message)
+      try {
+        if (saved) {
+          await prisma.savedNote.create({
+            data: {
+              userId: context.user.uid,
+              noteId,
+            },
+          });
+        } else {
+          await prisma.savedNote.deleteMany({
+            where: {
+              userId: context.user.uid,
+              noteId,
+            },
+          });
         }
 
-       
-
-
-      },
-     saveNote: async (
-  _: any,
-  { noteId, saved }: { noteId: string; saved: boolean },
-  context: any
-) => {
-  if (!context.user) throw new Error("Not authenticated");
-
-  try {
-    if (saved) {
-      await prisma.savedNote.create({
-        data: {
-          userId: context.user.uid,
-          noteId,
-        },
-      });
-    } else {
-      await prisma.savedNote.deleteMany({
-        where: {
-          userId: context.user.uid,
-          noteId,
-        },
-      });
-    }
-
-    return true;
-  } catch (err: any) {
-    console.error("Error saving notes:", err.message);
-    throw new Error("Failed to save notes");
-  }
-},
-
-
-    
+        return true;
+      } catch (err: any) {
+        console.error("Error saving notes:", err.message);
+        throw new Error("Failed to save notes");
+      }
+    },
   }
 };

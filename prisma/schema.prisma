@@ -14,13 +14,13 @@ datasource db {
 }
 
 model User{
-  id    String   @id @unique
+  id    String   @id @default(uuid())
   email  String @unique
-  profilePic   String
+  profilePic   String?
   password String
   name String
   youtube_url  String? @unique
-  links     String[]
+  links     UserLink[]
   avgRating  Float?
   totalLikes  Int? @default(0)
   notes Note[]
@@ -29,6 +29,15 @@ model User{
   likes Like[]
   connections Connection[] @relation("ReceiverUser")
   connectedTo Connection[] @relation("ConnectedUser")
+
+}
+
+model UserLink{
+  id   String @id @default(uuid())
+  linkName  String
+  linkUrl  String
+  userId String
+  user User @relation(fields: [userId],references:[id])
 
 }
 model Note{

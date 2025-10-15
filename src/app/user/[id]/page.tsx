@@ -1,60 +1,155 @@
 'use client'
-import React, { useState, useRef } from 'react';
-import { Camera, Heart, Bookmark, Eye, Link2, Award, Upload, ThumbsUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Heart, Bookmark, Eye, Upload, X, ExternalLink, Play, FileText, User, Sparkles, Calendar, RefreshCw, Youtube, BookmarkPlus, Award, Link } from 'lucide-react';
+import { useQuery,useMutation } from '@apollo/client/react';
+import gql from 'graphql-tag';
+import { useParams } from 'next/navigation';
 
-const ProfilePage = () => {
+const FETCH_USER_PROFILE = gql`
+  query FetchUser($userId: ID!) {
+    fetchUser(UserId: $userId) {
+      name
+      profilePic
+      likes
+      saves
+      ProfileLinks {
+        linkName
+        linkUrl
+      }
+    }
+  }
+`;
+
+const GET_NOTES = gql`
+  query GetNotes($page: Int, $limit: Int, $sortBy: SortOrder, $userId: ID, $saved: Boolean) {
+    getNotes(page: $page, limit: $limit, sortBy: $sortBy, userId: $userId, saved: $saved) {
+      notes {
+        id
+        title
+        thumbnail
+        contentCreater
+        channelName
+        youtube_url
+        pdf_url
+        userId
+        likesCount
+        savedByMe
+        likedByMe
+        createdAt
+        updatedAt
+      }
+      totalCount
+      totalPages
+      currentPage
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+`;
+
+const CREATE_USER_PROFILE_PIC = gql`
+  mutation CreateUserProfilePic($userId: ID!, $profileUrl: String) {
+    createUserProfilePic(userId: $userId, userProfilePic: $profileUrl) {
+      profilePic
+    }
+  }
+`;
+
+const CREATE_USER_PROFILE_LINKS = gql`
+  mutation CreateUserProfileLinks($userId: ID!, $links: ProfileLinksInput!) {
+    createUserProfileLinks(UserId: $userId, links: $links) {
+      linkName
+      linkUrl
+    }
+  }
+`;
+
+const UserProfile = () => {
+  const params = useParams();
+  const userId = params?.userId as string;
+  
   const [activeTab, setActiveTab] = useState('uploads');
   const [profileImage, setProfileImage] = useState(null);
-  const [userName, setUserName] = useState('Alex Johnson');
+  const [userName, setUserName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
-  const [profileLinks, setProfileLinks] = useState([
-    { platform: 'YouTube', url: 'youtube.com/@alexjohnson' },
-    { platform: 'Twitter', url: 'twitter.com/alexj' }
-  ]);
-  const [newLink, setNewLink] = useState({ platform: '', url: '' });
+  const [profileLinks, setProfileLinks] = useState([]);
+  const [newLink, setNewLink] = useState({ linkName: '', linkUrl: '' });
   const [showLinkForm, setShowLinkForm] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Mock data - replace with actual API calls
-  const stats = {
-    totalLikes: 1247,
-    totalSaves: 892,
-    totalViews: 15634,
-    netRating: 4.7
-  };
+  const { data: profileData, loading: profileLoading, error: profileError } = useQuery(FETCH_USER_PROFILE, {
+    variables: { userId },
+    skip: !userId,
+  });
 
-  const mockNotes = {
-    uploads: [
-      { id: 1, title: 'Advanced React Patterns', thumbnail: '🎯', likes: 234, saves: 189, views: 1200, price: '$9.99' },
-      { id: 2, title: 'Node.js Best Practices', thumbnail: '⚡', likes: 189, saves: 145, views: 980, price: '$7.99' },
-      { id: 3, title: 'TypeScript Deep Dive', thumbnail: '🔷', likes: 312, saves: 267, views: 1450, price: '$12.99' }
-    ],
-    saved: [
-      { id: 4, title: 'Web Performance Tips', thumbnail: '🚀', likes: 445, saves: 389, views: 2100, price: '$8.99', author: 'John Doe' },
-      { id: 5, title: 'CSS Grid Mastery', thumbnail: '🎨', likes: 298, saves: 234, views: 1560, price: '$6.99', author: 'Jane Smith' }
-    ],
-    liked: [
-      { id: 6, title: 'JavaScript Algorithms', thumbnail: '🧮', likes: 567, saves: 456, views: 2890, price: '$11.99', author: 'Mike Wilson' },
-      { id: 7, title: 'React Testing Guide', thumbnail: '✅', likes: 389, saves: 312, views: 1780, price: '$9.99', author: 'Sarah Lee' }
-    ]
-  };
+  const { data: notesData, loading: notesLoading, refetch: refetchNotes } = useQuery(GET_NOTES, {
+    variables: {
+      page: 1,
+      limit: 12,
+      sortBy: 'CREATED_AT_DESC',
+      userId: activeTab === 'uploads' ? userId : undefined,
+      saved: activeTab === 'saved' ? true : undefined,
+    },
+    skip: !userId,
+  });
 
-  const handleImageUpload = (e) => {
+  const [createProfilePic] = useMutation(CREATE_USER_PROFILE_PIC);
+  const [createProfileLinks] = useMutation(CREATE_USER_PROFILE_LINKS);
+
+  useEffect(() => {
+    if (profileData?.fetchUser) {
+      console.log('profileData',profileData);
+      setUserName(profileData.fetchUser.name || '');
+      setProfileImage(profileData.fetchUser.profilePic);
+      setProfileLinks(profileData.fetchUser.ProfileLinks || []);
+    }
+  }, [profileData]);
+
+  useEffect(() => {
+    if (userId) {
+      refetchNotes({
+        page: 1,
+        limit: 12,
+        sortBy: 'CREATED_AT_DESC',
+        userId: activeTab === 'uploads' ? userId : undefined,
+        saved: activeTab === 'saved' ? true : undefined,
+      });
+    }
+  }, [activeTab, userId, refetchNotes]);
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result);
+      reader.onloadend = async () => {
+        const base64String = reader.result;
+        setProfileImage(base64String);
+        
+        try {
+          await createProfilePic({
+            variables: { userId, profileUrl: base64String },
+          });
+        } catch (error) {
+          console.error('Error uploading profile picture:', error);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const addProfileLink = () => {
-    if (newLink.platform && newLink.url) {
-      setProfileLinks([...profileLinks, newLink]);
-      setNewLink({ platform: '', url: '' });
-      setShowLinkForm(false);
+  const addProfileLink = async () => {
+    if (newLink.linkName && newLink.linkUrl) {
+      try {
+        await createProfileLinks({
+          variables: { userId, links: newLink },
+        });
+        
+        setProfileLinks([...profileLinks, newLink]);
+        setNewLink({ linkName: '', linkUrl: '' });
+        setShowLinkForm(false);
+      } catch (error) {
+        console.error('Error adding profile link:', error);
+      }
     }
   };
 
@@ -62,22 +157,62 @@ const ProfilePage = () => {
     setProfileLinks(profileLinks.filter((_, i) => i !== index));
   };
 
-  const getCurrentNotes = () => {
-    switch(activeTab) {
-      case 'uploads': return mockNotes.uploads;
-      case 'saved': return mockNotes.saved;
-      case 'liked': return mockNotes.liked;
-      default: return [];
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
+  const getTimeAgo = (dateString) => {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
+  };
+
+  const stats = {
+    totalLikes: profileData?.fetchUser?.likes || 0,
+    totalSaves: profileData?.fetchUser?.saves || 0,
+    totalViews: 0,
+    netRating: 0,
+  };
+
+  const notes = notesData?.getNotes?.notes || [];
+  const loading = notesLoading || profileLoading;
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg font-semibold">Error loading profile</p>
+          <p className="text-gray-600 mt-2">{profileError.message}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Profile Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-purple-100">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-            {/* Profile Image */}
             <div className="relative group">
               <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-4xl font-bold shadow-lg overflow-hidden">
                 {profileImage ? (
@@ -92,16 +227,9 @@ const ProfilePage = () => {
               >
                 <Camera size={18} />
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>
 
-            {/* Profile Info */}
             <div className="flex-1 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
                 {isEditingName ? (
@@ -114,23 +242,18 @@ const ProfilePage = () => {
                     autoFocus
                   />
                 ) : (
-                  <h1 
-                    onClick={() => setIsEditingName(true)}
-                    className="text-3xl font-bold text-gray-800 cursor-pointer hover:text-purple-600 transition-colors"
-                  >
-                    {userName}
+                  <h1 onClick={() => setIsEditingName(true)} className="text-3xl font-bold text-gray-800 cursor-pointer hover:text-purple-600 transition-colors">
+                    {userName || 'User'}
                   </h1>
                 )}
               </div>
 
-              {/* Net Rating */}
               <div className="flex items-center justify-center md:justify-start gap-2 mb-6">
                 <Award className="text-yellow-500" size={24} />
-                <span className="text-2xl font-bold text-gray-700">{stats.netRating}</span>
+                <span className="text-2xl font-bold text-gray-700">{stats.netRating || 'N/A'}</span>
                 <span className="text-gray-500">Net Rating</span>
               </div>
 
-              {/* Stats */}
               <div className="grid grid-cols-3 gap-6 mb-6">
                 <div className="bg-gradient-to-br from-pink-100 to-pink-50 p-4 rounded-2xl text-center transform hover:scale-105 transition-transform">
                   <Heart className="mx-auto mb-2 text-pink-600" size={24} />
@@ -144,35 +267,26 @@ const ProfilePage = () => {
                 </div>
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-2xl text-center transform hover:scale-105 transition-transform">
                   <Eye className="mx-auto mb-2 text-blue-600" size={24} />
-                  <div className="text-2xl font-bold text-gray-800">{stats.totalViews.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-gray-800">{stats.totalViews > 0 ? stats.totalViews.toLocaleString() : 'N/A'}</div>
                   <div className="text-sm text-gray-600">Total Views</div>
                 </div>
               </div>
 
-              {/* Profile Links */}
               <div className="space-y-3">
                 <div className="flex items-center justify-center md:justify-start gap-2 text-gray-700 font-semibold mb-2">
-                  <Link2 size={18} />
+                  <Link size={18} />
                   <span>Profile Links</span>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                   {profileLinks.map((link, index) => (
                     <div key={index} className="bg-gray-100 px-4 py-2 rounded-full flex items-center gap-2 group">
-                      <span className="text-sm font-medium text-gray-700">{link.platform}:</span>
-                      <span className="text-sm text-gray-600">{link.url}</span>
-                      <button
-                        onClick={() => removeLink(index)}
-                        className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
+                      <span className="text-sm font-medium text-gray-700">{link.linkName}:</span>
+                      <span className="text-sm text-gray-600">{link.linkUrl}</span>
+                      <button onClick={() => removeLink(index)} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                     </div>
                   ))}
                   {!showLinkForm && (
-                    <button
-                      onClick={() => setShowLinkForm(true)}
-                      className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors"
-                    >
+                    <button onClick={() => setShowLinkForm(true)} className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors">
                       + Add Link
                     </button>
                   )}
@@ -181,28 +295,22 @@ const ProfilePage = () => {
                   <div className="flex flex-col sm:flex-row gap-2 mt-2">
                     <input
                       type="text"
-                      placeholder="Platform"
-                      value={newLink.platform}
-                      onChange={(e) => setNewLink({ ...newLink, platform: e.target.value })}
+                      placeholder="Platform (e.g., YouTube)"
+                      value={newLink.linkName}
+                      onChange={(e) => setNewLink({ ...newLink, linkName: e.target.value })}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
                     <input
                       type="text"
                       placeholder="URL"
-                      value={newLink.url}
-                      onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+                      value={newLink.linkUrl}
+                      onChange={(e) => setNewLink({ ...newLink, linkUrl: e.target.value })}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
-                    <button
-                      onClick={addProfileLink}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                    >
+                    <button onClick={addProfileLink} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                       Add
                     </button>
-                    <button
-                      onClick={() => setShowLinkForm(false)}
-                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
+                    <button onClick={() => setShowLinkForm(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">
                       Cancel
                     </button>
                   </div>
@@ -212,83 +320,180 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100">
-          <div className="flex border-b border-gray-200">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+          <div className="flex border-b border-gray-200 overflow-x-auto">
             <button
               onClick={() => setActiveTab('uploads')}
-              className={`flex-1 py-4 px-6 font-semibold transition-all ${
-                activeTab === 'uploads'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
+              className={`flex-1 min-w-max px-6 py-4 font-bold transition-all ${
+                activeTab === 'uploads' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center justify-center gap-2">
-                <Upload size={20} />
-                <span>My Uploads</span>
-              </div>
+              <Upload className="w-5 h-5 inline mr-2" />
+              My Uploads
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`flex-1 py-4 px-6 font-semibold transition-all ${
-                activeTab === 'saved'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
+              className={`flex-1 min-w-max px-6 py-4 font-bold transition-all ${
+                activeTab === 'saved' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center justify-center gap-2">
-                <Bookmark size={20} />
-                <span>Saved Notes</span>
-              </div>
+              <Bookmark className="w-5 h-5 inline mr-2" />
+              Saved Notes
             </button>
             <button
               onClick={() => setActiveTab('liked')}
-              className={`flex-1 py-4 px-6 font-semibold transition-all ${
-                activeTab === 'liked'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
+              className={`flex-1 min-w-max px-6 py-4 font-bold transition-all ${
+                activeTab === 'liked' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center justify-center gap-2">
-                <ThumbsUp size={20} />
-                <span>Liked Notes</span>
-              </div>
+              <Heart className="w-5 h-5 inline mr-2" />
+              Liked Notes
             </button>
           </div>
 
-          {/* Notes Grid */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getCurrentNotes().map((note) => (
-                <div
-                  key={note.id}
-                  className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-100"
-                >
-                  <div className="text-5xl mb-4 text-center">{note.thumbnail}</div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">{note.title}</h3>
-                  {note.author && (
-                    <p className="text-sm text-gray-500 mb-3">by {note.author}</p>
-                  )}
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-2xl font-bold text-purple-600">{note.price}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600 border-t border-gray-200 pt-4">
-                    <div className="flex items-center gap-1">
-                      <Heart size={16} className="text-pink-500" />
-                      <span>{note.likes}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Bookmark size={16} className="text-purple-500" />
-                      <span>{note.saves}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Eye size={16} className="text-blue-500" />
-                      <span>{note.views}</span>
-                    </div>
-                  </div>
+          <div className="p-6 bg-gradient-to-br from-gray-50 to-slate-50">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : notes.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {activeTab === 'uploads' && <Upload className="w-10 h-10 text-gray-400" />}
+                  {activeTab === 'saved' && <Bookmark className="w-10 h-10 text-gray-400" />}
+                  {activeTab === 'liked' && <Heart className="w-10 h-10 text-gray-400" />}
                 </div>
-              ))}
-            </div>
+                <p className="text-gray-500 text-lg font-medium">No notes found</p>
+                <p className="text-gray-400 text-sm mt-2">
+                  {activeTab === 'uploads' && 'Start by uploading your first note'}
+                  {activeTab === 'saved' && 'Save notes to access them here'}
+                  {activeTab === 'liked' && 'Like notes to see them here'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {notes.map((note) => (
+                  <div key={note.id} className="group relative bg-gradient-to-br from-white via-white to-gray-50 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-200 hover:border-blue-300">
+                    <div className="relative overflow-hidden bg-gray-900">
+                      <div className="w-full h-56 relative group/thumb overflow-hidden">
+                        <img
+                          src={note.thumbnail}
+                          alt={note.title}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover/thumb:scale-110"
+                          onError={(e) => {
+                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="225"%3E%3Crect fill="%23374151" width="400" height="225"/%3E%3Ctext fill="%23fff" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="20"%3EThumbnail%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300" />
+                        
+                        <div className="absolute bottom-3 left-3 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                          <Youtube className="w-3.5 h-3.5" />
+                          VIDEO
+                        </div>
+                      </div>
+
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                        <div className="bg-black/80 backdrop-blur-md text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 border border-white/20 shadow-xl">
+                          <Heart className={`w-4 h-4 ${note.likedByMe ? 'text-red-500 fill-red-500' : 'text-white'}`} />
+                          <span className="font-semibold">{note.likesCount}</span>
+                        </div>
+                        {note.savedByMe && (
+                          <div className="bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 shadow-xl">
+                            <BookmarkPlus className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      <h3 className="font-bold text-xl leading-tight text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors duration-300">
+                        {note.title}
+                      </h3>
+
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 p-2 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Creator</p>
+                            <p className="text-sm text-gray-800 font-semibold truncate">{note.contentCreater}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex-shrink-0 p-2 bg-gradient-to-br from-indigo-50 to-blue-100 rounded-xl">
+                            <Sparkles className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Channel</p>
+                            <p className="text-sm text-indigo-700 font-semibold truncate">{note.channelName}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span className="text-xs font-medium uppercase tracking-wide">Created</span>
+                          </div>
+                          <p className="text-xs text-gray-700 font-semibold">{formatDate(note.createdAt)}</p>
+                          <p className="text-xs text-gray-500">{getTimeAgo(note.createdAt)}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span className="text-xs font-medium uppercase tracking-wide">Updated</span>
+                          </div>
+                          <p className="text-xs text-gray-700 font-semibold">{formatDate(note.updatedAt)}</p>
+                          <p className="text-xs text-gray-500">{getTimeAgo(note.updatedAt)}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                          <span className="text-xs text-gray-600 font-mono">ID: {note.userId.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2.5 pt-2">
+                        <a
+                          href={note.youtube_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-red-500/30"
+                        >
+                          <Play className="w-4 h-4" />
+                          <span className="text-sm">Watch</span>
+                        </a>
+
+                        <a
+                          href={`/note/${note.id}`}
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/30"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span className="text-sm">Notes</span>
+                        </a>
+
+                        <a
+                          href={note.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white p-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center transform hover:scale-105 shadow-lg hover:shadow-green-500/30"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -296,4 +501,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage;
+export default UserProfile;
