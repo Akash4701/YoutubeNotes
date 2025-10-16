@@ -5,7 +5,7 @@ import { Calendar, ExternalLink, FileText, Heart, Play, Save, Sparkles, User, Cl
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
 
-function NoteCard({ note, index }: { note: any; index: number }) {
+function NoteCard({ note }: { note: any; }) {
   const [liked, setLiked] = useState<boolean>(note.likedByMe);
   const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
   const [saved, setSaved] = useState<boolean>(note.savedByMe || false);
@@ -46,7 +46,7 @@ function NoteCard({ note, index }: { note: any; index: number }) {
         }
       })
       console.log('Save operation is successful');
-    } catch (err) {
+    } catch (err:any) {
       console.log('saved operation is not successful', err.message);
       setSaved(!newSavedState);
     }

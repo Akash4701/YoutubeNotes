@@ -36,9 +36,9 @@ model UserLink{
   id   String @id @default(uuid())
   linkName  String
   linkUrl  String
-  userId String
+  userId String 
   user User @relation(fields: [userId],references:[id])
-
+    @@unique([userId,linkUrl])
 }
 model Note{
    id    String   @id @default(uuid())

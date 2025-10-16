@@ -4,8 +4,6 @@ import { gql } from "graphql-tag";
 export const userProfileTypeDefs = gql`
   type UserProfile {
     name: String
-    
-    
     likes: Int
     saves:Int
     ProfileLinks: [ProfileLink]
@@ -15,7 +13,8 @@ export const userProfileTypeDefs = gql`
     profilePic:String
 
     }
-    type ProfileLinks{
+    type ProfileLink{
+    id:String!
     linkName:String
     linkUrl:String
     }
@@ -25,8 +24,10 @@ export const userProfileTypeDefs = gql`
   }
 
   extend type Mutation {
-    createUserProfilePic(userId: Id!, profileUrl: String): ProfilePic
-    createUserProfileLinks(UserId:Id!,links:String[]):ProfileLinks
+    createUserProfilePic(userId: ID!, profileUrl: String): ProfilePic
+    createUserProfileLinks(userId:ID!,   linkName: String!
+      linkUrl: String!):ProfileLink
+      deleteUserProfileLinks(id:String!):Boolean
   }
 `;
 
@@ -61,7 +62,7 @@ export const userProfileResolvers = {
       return {
         name: user?.name,
         profilePic: user?.profilePic,
-        links: user?.links ?? [],
+        ProfileLinks: user?.links ?? [],
         saves,
         likes,
       };
@@ -71,19 +72,17 @@ export const userProfileResolvers = {
   Mutation: {
     createUserProfilePic: async (
       _: any,
-      { userId, userProfilePic }: { userProfilePic: string; userId: string },
+      { userId, profileUrl }: { profileUrl: string; userId: string },
       context: any
     ) => {
-      if (!context.user) {
-        throw new Error("Not authenticated");
-      }
+    
 
       const user = await prisma.user.update({
         where: {
           id: userId,
         },
         data: {
-          profilePic: userProfilePic,
+          profilePic: profileUrl,
         },
         select: {
           profilePic: true,
@@ -98,33 +97,69 @@ export const userProfileResolvers = {
       _: any,
       {
         userId,
-        links,
-      }: { userId: string; links: { linkName: string; linkUrl: string } },
+        linkName,
+        linkUrl
+      }: { userId: string; linkName: string; linkUrl: string  },
       context: any
     ) => {
-      if (!context.user) {
-        console.log("not authenticated");
-      }
+      // if (!context.user) {
+      //   console.log("not authenticated");
+      // }
       const newOrUpdatedLink = await prisma.userLink.upsert({
         where: {
-          id: userId,
+          userId_linkUrl:{
+           userId,
+           linkUrl
+          }
         },
         update: {
-          linkName: links.linkName,
-          linkUrl: links.linkUrl,
+          linkName: linkName,
+          linkUrl: linkUrl,
         },
         create: {
           userId,
-          linkName: links.linkName,
-          linkUrl: links.linkUrl,
+          linkName: linkName,
+          linkUrl: linkUrl,
         },
         select: {
+          id:true,
           linkName: true,
           linkUrl: true,
         },
       });
 
-      newOrUpdatedLink;
+     
+
+      return {
+        id:newOrUpdatedLink.id,
+        linkName:newOrUpdatedLink.linkName,
+        linkUrl:newOrUpdatedLink.linkUrl
+      }
     },
+
+    deleteUserProfileLinks:async(
+      _: any,
+      {
+        id
+        
+        
+      }: { id: string  },
+      context: any
+    )=>{
+      try{
+        const deletedLinks=await prisma.userLink.delete({
+          where: {
+          
+          id:id
+          
+        },
+        })
+
+        return true;
+
+      }catch(error){
+        console.log('Deletion of links is not successful',error.message)
+      }
+    }
   },
 };

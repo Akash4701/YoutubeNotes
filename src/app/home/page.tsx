@@ -6,6 +6,7 @@ import { gql } from '@apollo/client';
 import NoteCard from '@/components/NoteCard';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Bounce, toast } from 'react-toastify';
+import NoteLoader from '@/components/ui/NoteLoader';
 
 // GraphQL Queries with offset pagination
 const GET_NOTES = gql`
@@ -265,24 +266,7 @@ transition: Bounce,
     });
   }, [currentPage, totalPages]);
 
-  // Loading component
-  const LoadingGrid = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-      {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
-        <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
-          <div className="h-48 bg-gray-200"></div>
-          <div className="p-6">
-            <div className="h-4 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-            <div className="flex items-center justify-between">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+ 
 
   // Error component
   if (error) {
@@ -441,7 +425,7 @@ transition: Bounce,
       {/* Notes Grid */}
       <div className="relative max-w-7xl mx-auto px-6 py-12">
         {isLoading ? (
-          <LoadingGrid />
+          <NoteLoader />
         ) : currentNotes.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-8xl mb-6 animate-bounce">
@@ -456,8 +440,8 @@ transition: Bounce,
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {currentNotes.map((note, index) => (
-              <NoteCard key={note.id} note={note} index={index} />
+            {currentNotes.map((note) => (
+              <NoteCard key={note.id} note={note} />
             ))}
           </div>
         )}

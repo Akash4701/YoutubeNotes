@@ -14,8 +14,6 @@ export const noteTypeDefs = gql`
     channelName: String
     likes:[likes]!
     savedByMe:Boolean
-   
-    
     createdAt: String!
     updatedAt: String!
     likedByMe:Boolean!
@@ -142,9 +140,6 @@ export const noteResolvers = {
       context: any
     ) => {
       
-      if (!context.user) {
-        throw new Error("Not authenticated");
-      }
       
       const whereClause: any = userId ? { userId } : {};
       
@@ -184,6 +179,7 @@ export const noteResolvers = {
       try {
         const totalCount = await prisma.note.count({ where: whereClause });
         const totalPages = Math.ceil(totalCount / validLimit);
+        console.log('conetxt',context.user);
 
         // Fetch notes with likes count
         const notes = await prisma.note.findMany({
@@ -222,7 +218,7 @@ export const noteResolvers = {
           hasPreviousPage: validPage > 1,
         };
       } catch (error) {
-        console.error("Error fetching notes:", error);
+        console.error("Error fetching notes:", error.message);
         throw new Error("Failed to fetch notes");
       }
     },
