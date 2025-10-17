@@ -85,10 +85,14 @@ function Comments({ noteId }: { noteId: string }) {
   {
     variables: { noteId },
     skip: !noteId,
-    onCompleted: (data) => {
+    onCompleted: (data:any) => {
       console.log('onCompleted called:', data);
       setComments(data.fetchAllComments);
     },
+    onError:(error:any)=>{
+      console.log('Failed to fetch Messages',error);
+
+    }
   }
 );
 

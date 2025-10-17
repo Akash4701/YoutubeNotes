@@ -7,6 +7,8 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import NoteCard from '@/components/NoteCard';
 import NoteLoader from '@/components/ui/NoteLoader';
+import axios from 'axios';
+
 
 // Types
 interface ProfileLink {
@@ -14,8 +16,12 @@ interface ProfileLink {
   linkName: string;
   linkUrl: string;
 }
+interface UserName{
+  name:string;
+}
 
 interface UserProfile {
+  id:string,
   name: string;
   profilePic: string | null;
   likes: number;
@@ -102,11 +108,17 @@ const GET_NOTES = gql`
 
 const CREATE_USER_PROFILE_PIC = gql`
   mutation CreateUserProfilePic($userId: ID!, $profileUrl: String) {
-    createUserProfilePic(userId: $userId, userProfilePic: $profileUrl) {
+    createUserProfilePic(userId: $userId, profileUrl: $profileUrl) {
       profilePic
     }
   }
 `;
+const CREATE_USER_NAME= gql`
+   mutation CreateUserName($userId:ID!,$name:String){
+createUserName(userId:$userId,name:$name){
+name
+}
+}`;
 
 const CREATE_USER_PROFILE_LINKS = gql`
   mutation CreateUserProfileLinks($userId: ID!, $linkName: String!, $linkUrl: String!) {
@@ -119,9 +131,11 @@ const CREATE_USER_PROFILE_LINKS = gql`
 `;
 
 const UserProfile: React.FC = () => {
+  console.log("UserProfile rendered");
+
   const params = useParams();
   const userId = params?.userId as string;
-  const token = useAuth();
+  const tokenRef = useRef(useAuth());
   
   // State
   const [activeTab, setActiveTab] = useState<TabType>('uploads');
@@ -164,10 +178,16 @@ const UserProfile: React.FC = () => {
   }>(DELETE_PROFILE_LINK, {
     onError: (error) => console.error('Failed to delete link:', error),
   });
+  const [createUserName,{loading:updatingName}]=useMutation<{
+    createUserName:UserName;
+
+  }>(CREATE_USER_NAME,{
+    onError:(error)=>console.error('Failed to update name:', error),
+  })
 
   // Memoized fetch notes function
   const fetchNotes = useCallback(() => {
-    if (!userId || !token) return;
+    if (!userId || !tokenRef.current) return;
 
     const variables: Record<string, any> = {
       page: 1,
@@ -182,7 +202,7 @@ const UserProfile: React.FC = () => {
     }
 
     getNotes({ variables });
-  }, [userId, token, activeTab, getNotes]);
+  }, [userId,  activeTab, getNotes]);
 
   // Effects
   useEffect(() => {
@@ -213,36 +233,66 @@ const UserProfile: React.FC = () => {
     setNewLink(prev => ({ ...prev, linkUrl: e.target.value }));
   }, []);
 
-  const handleUserNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserName(e.target.value);
-  }, []);
+  const handleUserNameChange = useCallback(
+  async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setUserName(newName);
+    try {
+      await createUserName({
+        variables: {
+          userId,
+          name: newName,
+        },
+      });
+    } catch (error) {
+      console.error('Error updating name:', error);
+    }
+  },
+  [createUserName, userId]
+);
+
 
   // Handlers
-  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+ const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      setProfileImage(base64String);
-      
-      try {
-        await createProfilePic({
-          variables: { userId, profileUrl: base64String },
-          optimisticResponse: {
-            createUserProfilePic: {
-              __typename: 'User',
-              profilePic: base64String,
-            },
-          },
-        });
-      } catch (error) {
-        setProfileImage(profileData?.fetchUser?.profilePic || null);
-      }
-    };
-    reader.readAsDataURL(file);
-  }, [userId, createProfilePic, profileData]);
+  try {
+    // 1️⃣ Prepare form data for Cloudinary
+     const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string);
+
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+
+  const res = await axios.post(url, formData);
+  
+  console.log('Cloudinary response:', res);
+  console.log('object', res.data);
+  console.log('uploaded successfully to Cloudinary')
+    const data = await res.data;
+    if (!res.data.secure_url) throw new Error("Image upload failed");
+
+    const imageUrl = data.secure_url; // ✅ This is your Cloudinary public URL
+    setProfileImage(imageUrl);
+
+    // 3️⃣ Save the URL via GraphQL mutation
+    await createProfilePic({
+      variables: { userId, profileUrl: imageUrl },
+      optimisticResponse: {
+        createUserProfilePic: {
+          __typename: 'User',
+          profilePic: imageUrl,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    setProfileImage(profileData?.fetchUser?.profilePic || null);
+  }
+}, [userId, createProfilePic, profileData]);
+
 
   const addProfileLink = useCallback(async () => {
     if (!newLink.linkName.trim() || !newLink.linkUrl.trim()) return;

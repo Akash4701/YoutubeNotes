@@ -3,12 +3,17 @@ import { gql } from "graphql-tag";
 
 export const userProfileTypeDefs = gql`
   type UserProfile {
+  id:ID!
     name: String
     likes: Int
     saves:Int
     ProfileLinks: [ProfileLink]
     profilePic: String
   }
+    type UserNavbarProfile{
+    id:ID!
+    profilePic:String
+    }
     type ProfilePic{
     profilePic:String
 
@@ -18,9 +23,13 @@ export const userProfileTypeDefs = gql`
     linkName:String
     linkUrl:String
     }
+    type UserName{
+    name:String
+    }
 
   extend type Query {
     fetchUser(UserId: ID!): UserProfile
+    fetchUserNavbarProfile():UserNavbarProfile
   }
 
   extend type Mutation {
@@ -28,12 +37,37 @@ export const userProfileTypeDefs = gql`
     createUserProfileLinks(userId:ID!,   linkName: String!
       linkUrl: String!):ProfileLink
       deleteUserProfileLinks(id:String!):Boolean
+      createUserName(userId:ID!,name:String):UserName
   }
 `;
 
 export const userProfileResolvers = {
   Query: {
-    fetchUser: async (_: any, { userId }: { userId: string }) => {
+    fetchUserNavbarProfile:async(_:any,context:any)=>{
+      if(!context.user){
+        throw new Error("User is unauthenticated");
+      }
+      try{
+
+      const user=await prisma.user.findFirst({
+        where:{
+          id:context.user.uid
+        },select:{
+          id:true,
+          profilePic:true
+
+        }
+      })
+      return user
+    }catch(error){
+      console.log('Nvabar User fetched Unsuccessfully')
+    }
+
+    },
+    fetchUser: async (_: any, { userId }: { userId: string },context:any) => {
+      if(!context.user){
+        throw new Error("Unauthenticated user")
+      }
       const saves = await prisma.savedNote.count({
         where: {
           userId,
@@ -53,6 +87,7 @@ export const userProfileResolvers = {
           id: userId,
         },
         select: {
+          id:context.user.uid,
           name: true,
           links: true,
           profilePic: true,
@@ -60,6 +95,7 @@ export const userProfileResolvers = {
         },
       });
       return {
+        id:user?.id,
         name: user?.name,
         profilePic: user?.profilePic,
         ProfileLinks: user?.links ?? [],
@@ -160,6 +196,28 @@ export const userProfileResolvers = {
       }catch(error){
         console.log('Deletion of links is not successful',error.message)
       }
+    },
+
+    createUserName:async(_:any,{userId,name}:{userId:string,name:string},context:any)=>{
+      try{
+        const updatedName=await prisma.user.update({
+          where:{
+            id:userId
+          },
+          data:{
+            name
+          }
+
+        })
+         
+        return 
+          updatedName
+        
+
+      }catch(error){
+        throw new Error('Failed to set UserName',error.message)
+      }
+
     }
   },
 };

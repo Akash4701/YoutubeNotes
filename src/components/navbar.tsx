@@ -16,11 +16,34 @@ import UploadNotes from './UploadNotes'
 import Link from 'next/link'
 import { Bounce, toast } from 'react-toastify'
 import { useRouter } from 'next/navigation'
+import gql from 'graphql-tag'
+import { useQuery } from '@apollo/client/react'
+
+
+interface User {
+  id: string
+  profilePic: string
+}
+
+const FETCH_USER = gql`
+  query FetchUserNavbarProfile {
+    fetchUserNavbarProfile {
+      id
+      profilePic
+    }
+  }
+`
 
 function Navbar() {
   const { loading } = useAuth()
   const router = useRouter()
   const [openUpload, setOpenUpload] = useState(false) 
+
+  const { data, loading: fetching } = useQuery(FETCH_USER, {
+    skip: loading, // Skip query if user is not authenticated
+  })
+
+  const user = data?.fetchUserNavbarProfile
 
   const handleHomeClick = (e: React.MouseEvent) => {
     if (loading) {
@@ -38,6 +61,12 @@ function Navbar() {
       })
     } else {
       router.push('/home')
+    }
+  }
+
+  const handleUserProfileClick = () => {
+    if (user?.id) {
+      router.push(`/user/${user.id}`)
     }
   }
 
@@ -87,6 +116,28 @@ function Navbar() {
                   <UploadNotes />
                 </DialogContent>
               </Dialog>
+              
+              {/* User Profile Icon */}
+              <button
+                onClick={handleUserProfileClick}
+                className="relative group"
+                disabled={fetching}
+              >
+                <div className="w-10 h-10 rounded-full ring-2 ring-purple-600 ring-offset-2 overflow-hidden hover:ring-purple-700 transition-all duration-300 transform hover:scale-105">
+                  {user?.profilePic ? (
+                    <img
+                      src={user.profilePic}
+                      alt="User profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-semibold">
+                      {user?.id?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                </div>
+              </button>
+              
               <SignOut />
             </div>
           ) : (
