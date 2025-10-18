@@ -29,13 +29,12 @@ export const userProfileTypeDefs = gql`
 
   extend type Query {
     fetchUser(UserId: ID!): UserProfile
-    fetchUserNavbarProfile():UserNavbarProfile
+    fetchUserNavbarProfile:UserNavbarProfile
   }
 
   extend type Mutation {
     createUserProfilePic(userId: ID!, profileUrl: String): ProfilePic
-    createUserProfileLinks(userId:ID!,   linkName: String!
-      linkUrl: String!):ProfileLink
+    createUserProfileLinks(userId:ID!,   linkName: String!,linkUrl: String!):ProfileLink
       deleteUserProfileLinks(id:String!):Boolean
       createUserName(userId:ID!,name:String):UserName
   }
@@ -43,28 +42,32 @@ export const userProfileTypeDefs = gql`
 
 export const userProfileResolvers = {
   Query: {
-    fetchUserNavbarProfile:async(_:any,context:any)=>{
-      if(!context.user){
-        throw new Error("User is unauthenticated");
-      }
-      try{
+    fetchUserNavbarProfile: async (_: any, __: any, context: any) => {
+  if (!context.user) {
+    throw new Error("User is unauthenticated");
+  }
+  try {
+    const user = await prisma.user.findFirst({
+      where: { id: context.user.uid },
+      select: {
+        id: true,
+        profilePic: true,
+      },
+    });
 
-      const user=await prisma.user.findFirst({
-        where:{
-          id:context.user.uid
-        },select:{
-          id:true,
-          profilePic:true
-
-        }
-      })
-      return user
-    }catch(error){
-      console.log('Nvabar User fetched Unsuccessfully')
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    },
+    return user;
+  } catch (error) {
+    console.error('Navbar User fetch failed:', error);
+    throw new Error('Failed to fetch Navbar profile');
+  }
+}
+,
     fetchUser: async (_: any, { userId }: { userId: string },context:any) => {
+      console.log('userId',userId);
       if(!context.user){
         throw new Error("Unauthenticated user")
       }

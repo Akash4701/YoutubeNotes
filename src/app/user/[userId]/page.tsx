@@ -135,7 +135,9 @@ const UserProfile: React.FC = () => {
 
   const params = useParams();
   const userId = params?.userId as string;
-  const tokenRef = useRef(useAuth());
+  console.log('userId',userId);
+  const token = useAuth();
+  console.log('tokenref',token);
   
   // State
   const [activeTab, setActiveTab] = useState<TabType>('uploads');
@@ -187,11 +189,13 @@ const UserProfile: React.FC = () => {
 
   // Memoized fetch notes function
   const fetchNotes = useCallback(() => {
-    if (!userId || !tokenRef.current) return;
+    if (!userId || !token) return;
+    console.log('userId in notes',userId);
 
     const variables: Record<string, any> = {
       page: 1,
       limit: 9,
+         sortBy  :'LIKES_DESC',
       userId,
     };
 
@@ -202,7 +206,7 @@ const UserProfile: React.FC = () => {
     }
 
     getNotes({ variables });
-  }, [userId,  activeTab, getNotes]);
+  }, [token,userId,  activeTab, getNotes]);
 
   // Effects
   useEffect(() => {
@@ -211,7 +215,7 @@ const UserProfile: React.FC = () => {
       setProfileImage(profileData.fetchUser.profilePic);
       setProfileLinks(profileData.fetchUser.ProfileLinks || []);
     }
-  }, [profileData]);
+  }, [token,profileData]);
 
   useEffect(() => {
     fetchNotes();

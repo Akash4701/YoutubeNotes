@@ -65,9 +65,9 @@ export const noteTypeDefs = gql`
   getNoteById(
   id:ID!):Note!
     getNotes(
-      page: Int = 1
-      limit: Int = 10
-      sortBy: SortOrder = CREATED_AT_DESC
+      page: Int 
+      limit: Int
+      sortBy: SortOrder 
       userId: ID
       saved: Boolean
     ): NotesResponse!
@@ -139,13 +139,16 @@ export const noteResolvers = {
       },
       context: any
     ) => {
+       console.log('conetxt',context.user);
+       console.log('userId',userId);
+       console.log('page',page,"limit",limit,saved);
       
       
       const whereClause: any = userId ? { userId } : {};
       
       if (saved) {
         whereClause.savedByMe = {
-          some: { userId: context.user.uid },
+          some: { userId: context.user.user_id },
         };
       }
 
@@ -179,7 +182,7 @@ export const noteResolvers = {
       try {
         const totalCount = await prisma.note.count({ where: whereClause });
         const totalPages = Math.ceil(totalCount / validLimit);
-        console.log('conetxt',context.user);
+        console.log('conetxt',context.user.user_id);
 
         // Fetch notes with likes count
         const notes = await prisma.note.findMany({
@@ -189,11 +192,11 @@ export const noteResolvers = {
           orderBy: getOrderBy(sortBy),
           include: {
             likes: {
-              where: { userId: context.user.uid, liked: true }
+              where: { userId: context.user.user_id, liked: true }
             },
             savedByMe: {
               where: {
-                userId: context.user.uid
+                userId: context.user.user_id
               }
             }
           },
