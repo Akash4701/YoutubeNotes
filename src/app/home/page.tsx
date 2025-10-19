@@ -298,7 +298,7 @@ transition: Bounce,
 
       {/* Header with glassmorphism effect */}
       <div className="relative bg-white/80 backdrop-blur-xl shadow-xl border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="min-w-auto mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
@@ -366,7 +366,7 @@ transition: Bounce,
       {/* Section Navigation - Hidden during search */}
       {!isSearching && (
         <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
-          <div className="max-w-7xl mx-auto px-6">
+          <div className="min-w-auto mx-auto px-6">
             <div className="flex space-x-2">
               {[
                 { id: 'trending', label: 'Trending', icon: TrendingUp, color: 'from-red-500 to-pink-500' },
@@ -397,7 +397,7 @@ transition: Bounce,
       {/* Search Results Header */}
       {isSearching && debouncedSearchTerm && (
         <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="min-w-auto mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Search className="w-6 h-6 text-purple-600" />
@@ -423,7 +423,7 @@ transition: Bounce,
       )}
 
       {/* Notes Grid */}
-      <div className="relative max-w-7xl mx-auto px-6 py-12">
+      <div className="relative min-w-auto mx-auto px-6 py-12">
         {isLoading ? (
           <NoteLoader />
         ) : currentNotes.length === 0 ? (

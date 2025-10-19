@@ -59,6 +59,13 @@ export default function Home() {
                 type="text" 
                 placeholder="Paste any YouTube URL to find notes..."
                 className="flex-1 outline-none text-gray-700"
+                onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleSearch();
+        }
+      }
+    }
               />
             </div>
             <button onClick={handleSearch}className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-full hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 font-medium">

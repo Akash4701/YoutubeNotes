@@ -142,12 +142,27 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         ),
     });
 
+    if(loading){
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600" />
+          <p className="text-gray-600 text-lg font-medium">Loading Note...</p>
+        </div>
+      </div>
+    }
+    if(error){
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg font-semibold">Error loading Note</p>
+         
+        </div>
+      </div>
+    }
+
     return (
         <div>
             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
                 <div style={{ height: '100vh' }}>
-                    {loading && <div>Loading PDF...</div>}
-                    {error && <div>Error loading PDF</div>}
                     {data && data.getNoteById ? (
                         <Viewer
                             fileUrl={data.getNoteById.pdf_url}
