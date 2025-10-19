@@ -80,8 +80,8 @@ const DELETE_PROFILE_LINK = gql`
 `;
 
 const GET_NOTES = gql`
-  query GetNotes($page: Int, $limit: Int, $sortBy: SortOrder, $userId: ID, $saved: Boolean) {
-    getNotes(page: $page, limit: $limit, sortBy: $sortBy, userId: $userId, saved: $saved) {
+  query GetNotes($page: Int, $limit: Int, $sortBy: SortOrder, $userId: ID, $saved: Boolean,$userliked:Boolean) {
+    getNotes(page: $page, limit: $limit, sortBy: $sortBy, userId: $userId, saved: $saved,userliked:$userliked) {
       notes {
         id
         title
@@ -202,7 +202,7 @@ const UserProfile: React.FC = () => {
     if (activeTab === 'saved') {
       variables.saved = true;
     } else if (activeTab === 'liked') {
-      variables.liked = true;
+      variables.userliked = true;
     }
 
     getNotes({ variables });

@@ -65,11 +65,12 @@ export const noteTypeDefs = gql`
   getNoteById(
   id:ID!):Note!
     getNotes(
-      page: Int 
-      limit: Int
-      sortBy: SortOrder 
+        page: Int = 1
+      limit: Int = 10
+      sortBy: SortOrder = CREATED_AT_DESC
       userId: ID
       saved: Boolean
+      userliked:Boolean
     ): NotesResponse!
     
     searchNotes(
@@ -130,25 +131,34 @@ export const noteResolvers = {
    
     getNotes: async (
       _: any,
-      { page, limit, sortBy, userId, saved }: { 
+      { page, limit, sortBy, userId, saved,userliked }: { 
         page: number; 
         limit: number; 
         sortBy: string;
         userId?: string;
         saved?: boolean;
+        userliked?:boolean;
       },
       context: any
     ) => {
        console.log('conetxt',context.user);
        console.log('userId',userId);
        console.log('page',page,"limit",limit,saved);
+
       
       
       const whereClause: any = userId ? { userId } : {};
       
       if (saved) {
         whereClause.savedByMe = {
-          some: { userId: context.user.user_id },
+          some: { userId: userId },
+        };
+      }
+      if(userliked){
+         whereClause.likes = {
+          some: { userId: userId,
+            liked:true
+           },
         };
       }
 

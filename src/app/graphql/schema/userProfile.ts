@@ -68,12 +68,12 @@ export const userProfileResolvers = {
 ,
     fetchUser: async (_: any, { userId }: { userId: string },context:any) => {
       console.log('userId',userId);
-      if(!context.user){
-        throw new Error("Unauthenticated user")
-      }
+      // if(!context.user){
+      //   throw new Error("Unauthenticated user")
+      // }
       const saves = await prisma.savedNote.count({
         where: {
-          userId,
+            userId,
         },
       });
       const likes = await prisma.like.count({
@@ -90,7 +90,7 @@ export const userProfileResolvers = {
           id: userId,
         },
         select: {
-          id:context.user.uid,
+          id:true,
           name: true,
           links: true,
           profilePic: true,
