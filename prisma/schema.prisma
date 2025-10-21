@@ -24,6 +24,7 @@ model User{
   avgRating  Float?
   totalLikes  Int? @default(0)
   notes Note[]
+  view View[]
   savedByMe SavedNote[]
   comments Comment[]
   likes Like[]
@@ -43,8 +44,9 @@ model UserLink{
 model Note{
    id    String   @id @default(uuid())
    title String
+   
    youtube_url String
-   description String?
+   
    likes Like[]
    likedByMe  Boolean?
    likesCount  Int? @default(0)
@@ -54,11 +56,22 @@ model Note{
    thumbnail String?
    author String?
     pdf_url String
+    views  View[]
+    viewsCount Int @default(0)
     userId String
     user  User @relation(fields:[userId],references: [id])
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt  
     comments Comment[]
+}
+
+model View{
+  id String @id @default(uuid())
+  userId  String
+  user   User @relation(fields: [userId],references: [id])
+  noteId  String
+  note   Note @relation(fields: [noteId],references: [id])
+  @@unique([noteId,userId])
 }
   model Like{
     id String @id @default(uuid())

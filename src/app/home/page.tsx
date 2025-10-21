@@ -18,6 +18,11 @@ const GET_NOTES = gql`
         youtube_url
         likesCount
         savedByMe
+        user{
+        profilePic
+        
+        }
+        viewsCount
         
         likedByMe
         contentCreater

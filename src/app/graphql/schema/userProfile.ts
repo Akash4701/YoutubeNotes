@@ -37,6 +37,7 @@ export const userProfileTypeDefs = gql`
     createUserProfileLinks(userId:ID!,   linkName: String!,linkUrl: String!):ProfileLink
       deleteUserProfileLinks(id:String!):Boolean
       createUserName(userId:ID!,name:String):UserName
+      viewNote(userId:ID!,noteId:ID!):Boolean
   }
 `;
 
@@ -109,11 +110,63 @@ export const userProfileResolvers = {
   },
 
   Mutation: {
+   viewNote: async (_: any, { userId, noteId }: { userId: string; noteId: string }) => {
+  try {
+    // Try to find an existing view record
+    const existing = await prisma.view.findUnique({
+      where: {
+        noteId_userId:{
+        
+          userId, 
+          noteId
+       }
+       },
+      
+
+    });
+
+    if (existing) {
+      // Already viewed — no increment
+      return true;
+    }
+
+    // Transaction: create view + increment counter safely
+    await prisma.$transaction([
+      prisma.view.create({
+        data: {
+          userId,
+          noteId,
+        },
+      }),
+      prisma.note.update({
+        where: { id: noteId }, // ensure this matches your actual PK
+        data: {
+          viewsCount: {
+            increment: 1,
+          },
+        },
+      }),
+    ]);
+
+    return false;
+  } catch (error) {
+    // If the record already exists (race condition), ignore it
+    if (error.code === "P2002") {
+      // Unique constraint violation => already viewed
+      return true;
+    }
+    console.error("Error recording view:", error);
+    throw error;
+  }
+},
+
     createUserProfilePic: async (
       _: any,
       { userId, profileUrl }: { profileUrl: string; userId: string },
       context: any
     ) => {
+
+     
     
 
       const user = await prisma.user.update({

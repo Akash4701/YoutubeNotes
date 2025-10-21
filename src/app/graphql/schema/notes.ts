@@ -3,21 +3,27 @@ import { gql } from "graphql-tag";
 
 export const noteTypeDefs = gql`
   type Notes {
+ 
     id: ID!
     title: String!
     youtube_url: String!
     pdf_url: String!
     userId: ID!
+    viewsCount:Int
     likesCount:Int
     contentCreater: String
     thumbnail: String
     channelName: String
     likes:[likes]!
+    user:user
     savedByMe:Boolean
     createdAt: String!
     updatedAt: String!
     likedByMe:Boolean!
   }
+    type user{
+    profilePic:String
+    }
 
  
   type likes{
@@ -208,12 +214,19 @@ export const noteResolvers = {
               where: {
                 userId: context.user.user_id
               }
+            },
+            user:{
+              select:{
+                profilePic:true
+              }
+
             }
           },
         });
 
         const formattedNotes = notes.map((note) => ({
           ...note,
+          
           savedByMe: note.savedByMe.length > 0,
           likedByMe: note.likes.length > 0,
           createdAt: note.createdAt.toISOString(),

@@ -1,36 +1,45 @@
 'use client'
 import { useMutation } from '@apollo/client/react';
 import gql from 'graphql-tag';
-import { Calendar, ExternalLink, FileText, Heart, Play, Save, Sparkles, User, Clock, RefreshCw, Youtube, BookmarkPlus } from 'lucide-react';
+import { Calendar, ExternalLink, FileText, Heart, Play, Save, Sparkles, User, Clock, RefreshCw, Youtube, BookmarkPlus, Eye } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react'
 
-function NoteCard({ note }: { note: any; }) {
-  const [liked, setLiked] = useState<boolean>(note.likedByMe);
-  const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
-  const [saved, setSaved] = useState<boolean>(note.savedByMe || false);
-  console.log('likesCount', likesCount, note.title)
-
-  const LIKE_NOTE = gql`
+const LIKE_NOTE = gql`
    mutation LikeNote($noteId:ID!,$liked:Boolean){
      likeNotes(noteId:$noteId,liked:$liked)
    }
   `
 
-  const SAVE_NOTE = gql`
+const SAVE_NOTE = gql`
   mutation SaveNote($noteId:ID!,$saved:Boolean){
   saveNote(noteId:$noteId,saved:$saved)
   }
   `
 
+const VIEW_NOTE = gql`
+  mutation ViewNote($noteId:ID!,$userId:ID!){
+  viewNote(noteId:$noteId,userId:$userId)
+  }`
+
+function NoteCard({ note }: { note: any; }) {
+  const [liked, setLiked] = useState<boolean>(note.likedByMe);
+  const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
+  const [saved, setSaved] = useState<boolean>(note.savedByMe || false);
+  const [viewsCount, setViewCount] = useState<number>(note.viewsCount || 0);
+  console.log('likesCount', likesCount, note.title)
+
   const [likeNoteMutation, { loading: likeLoading }] = useMutation(LIKE_NOTE);
   const [saveNoteMutation, { loading: saveLoading }] = useMutation(SAVE_NOTE);
-
+  const [viewNoteMutation, { loading: viewloading }] = useMutation(VIEW_NOTE);
+  
   useEffect(() => {
     setLiked(note.likedByMe);
     setSaved(note.savedByMe);
     setLikesCount(note.likesCount || 0);
-  }, [note.likedByMe, note.likesCount, note.savedByMe]);
+    setViewCount(note.viewsCount || 0);
+  }, [note.likedByMe, note.likesCount, note.savedByMe, note.viewsCount]);
 
   const handleSaveToggle = async () => {
     const newSavedState = !saved;
@@ -46,9 +55,44 @@ function NoteCard({ note }: { note: any; }) {
         }
       })
       console.log('Save operation is successful');
-    } catch (err:any) {
+    } catch (err: any) {
       console.log('saved operation is not successful', err.message);
       setSaved(!newSavedState);
+    }
+  }
+
+  const router = useRouter();
+
+  const handleView = () => {
+    router.push(`/note/${note.id}`)
+    
+    if (!note.id && !note.userId) return;
+    const timer = setTimeout(async () => {
+      try {
+        console.log('fetching views')
+      
+        const res = await viewNoteMutation({
+          variables: {
+            userId: note.userId,
+            noteId: note.id
+          }
+        })
+        const result = res.data.viewNote;
+        console.log('result views', result);
+        if (!result) {
+          console.log("✅ View recorded or already exists");
+          setViewCount(note.viewsCount + 1);
+        } 
+        return () => clearTimeout(timer)
+      } catch (err: any) {
+        console.log('Error creating views', err.message)
+      }
+    }, 4000);
+  }
+
+  const handleUserClick = () => {
+    if (note.userId) {
+      router.push(`/user/${note.userId}`);
     }
   }
 
@@ -136,8 +180,6 @@ function NoteCard({ note }: { note: any; }) {
             className="w-full h-full object-cover transition-transform duration-700 group-hover/thumb:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300" />
-          
-          
         </div>
 
         {/* Top Action Badges */}
@@ -161,7 +203,6 @@ function NoteCard({ note }: { note: any; }) {
             </button>
           </div>
 
-          {/* Save Badge */}
           <button 
             onClick={handleSaveToggle}
             disabled={saveLoading}
@@ -176,6 +217,38 @@ function NoteCard({ note }: { note: any; }) {
               } ${saveLoading ? 'animate-spin' : ''}`}
             />
           </button>
+        </div>
+
+        {/* User Profile Picture - Bottom Left */}
+        <div className="absolute bottom-3 left-3">
+          <button
+            onClick={handleUserClick}
+            className="group/profile relative transition-all duration-200 hover:scale-110"
+            aria-label="View user profile"
+          >
+            <div className="w-12 h-12 rounded-full border-3 border-white shadow-xl overflow-hidden bg-gradient-to-br from-purple-400 to-pink-400">
+              {note.user?.profilePic ? (
+                <img
+                  src={note.user.profilePic}
+                  alt={note.user.name || 'User'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="absolute inset-0 rounded-full bg-white/0 group-hover/profile:bg-white/20 transition-colors duration-200" />
+          </button>
+        </div>
+
+        {/* View Count Badge - Bottom Right */}
+        <div className="absolute bottom-3 right-3">
+          <div className="bg-black/80 backdrop-blur-md text-white px-3 py-2 rounded-full text-sm flex items-center gap-2 border border-white/20 shadow-xl">
+            <Eye className="w-4 h-4" />
+            <span className="font-semibold">{viewsCount}</span>
+          </div>
         </div>
       </div>
 
@@ -232,8 +305,6 @@ function NoteCard({ note }: { note: any; }) {
           </div>
         </div>
 
-     
-
         {/* Action Buttons */}
         <div className="flex gap-2.5 pt-2">
           <a
@@ -246,20 +317,15 @@ function NoteCard({ note }: { note: any; }) {
             <span className="text-sm">Watch</span>
           </a>
 
-          <Link
-            href={`/note/${note.id}`}
+          <button
+            onClick={handleView}
             className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg hover:shadow-blue-500/30"
           >
             <FileText className="w-4 h-4" />
             <span className="text-sm">Notes</span>
-          </Link>
-
-         
+          </button>
         </div>
       </div>
-
-      {/* Hover Glow Effect */}
-    
     </div>
   );
 }
