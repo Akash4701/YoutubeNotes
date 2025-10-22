@@ -9,6 +9,7 @@ export const userProfileTypeDefs = gql`
     saves:Int
     ProfileLinks: [ProfileLink]
     profilePic: String
+    views:Int
   }
     type UserNavbarProfile{
     id:ID!
@@ -26,10 +27,14 @@ export const userProfileTypeDefs = gql`
     type UserName{
     name:String
     }
+    type UserViews{
+    views:Int
+    }
 
   extend type Query {
     fetchUser(UserId: ID!): UserProfile
     fetchUserNavbarProfile:UserNavbarProfile
+    
   }
 
   extend type Mutation {
@@ -43,6 +48,8 @@ export const userProfileTypeDefs = gql`
 
 export const userProfileResolvers = {
   Query: {
+    
+
     fetchUserNavbarProfile: async (_: any, __: any, context: any) => {
   if (!context.user) {
     throw new Error("User is unauthenticated");
@@ -72,6 +79,14 @@ export const userProfileResolvers = {
       // if(!context.user){
       //   throw new Error("Unauthenticated user")
       // }
+       const result=await prisma.note.aggregate({
+        where:{
+          userId
+        },
+      _sum:{
+          viewsCount:true
+        }
+      })
       const saves = await prisma.savedNote.count({
         where: {
             userId,
@@ -103,6 +118,7 @@ export const userProfileResolvers = {
         name: user?.name,
         profilePic: user?.profilePic,
         ProfileLinks: user?.links ?? [],
+        views:result._sum.viewsCount,
         saves,
         likes,
       };

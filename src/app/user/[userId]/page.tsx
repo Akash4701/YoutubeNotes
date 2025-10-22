@@ -26,6 +26,7 @@ interface UserProfile {
   profilePic: string | null;
   likes: number;
   saves: number;
+  views:number;
   ProfileLinks: ProfileLink[];
 }
 
@@ -64,6 +65,7 @@ const FETCH_USER_PROFILE = gql`
       profilePic
       likes
       saves
+      views
       ProfileLinks {
         id
         linkName
@@ -85,6 +87,7 @@ const GET_NOTES = gql`
       notes {
         id
         title
+        viewsCount
         thumbnail
         contentCreater
         channelName
@@ -130,6 +133,7 @@ const CREATE_USER_PROFILE_LINKS = gql`
   }
 `;
 
+
 const UserProfile: React.FC = () => {
   console.log("UserProfile rendered");
 
@@ -143,6 +147,7 @@ const UserProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('uploads');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [profileLinks, setProfileLinks] = useState<ProfileLink[]>([]);
   const [newLink, setNewLink] = useState({ linkName: '', linkUrl: '' });
@@ -342,7 +347,7 @@ const UserProfile: React.FC = () => {
   const stats = useMemo(() => ({
     totalLikes: profileData?.fetchUser?.likes || 0,
     totalSaves: profileData?.fetchUser?.saves || 0,
-    totalViews: 0,
+    totalViews: profileData?.fetchUser?.views || 0,
     netRating: 0,
   }), [profileData]);
 
