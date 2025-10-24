@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import gql from 'graphql-tag';
-import { useMutation } from "@apollo/client/react"
+import { useLazyQuery, useMutation} from "@apollo/client/react"
 import { Supadata, YoutubeVideo } from '@supadata/js';
 import axios from 'axios';
 
@@ -25,11 +25,69 @@ import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   title: z.string().min(1, { message: 'Name is required' }),
-  thumbnail: z.string().optional(),  // optional thumbnail
+  thumbnail: z.string().optional(),
   creater: z.string().min(1, { message: 'Creator name is required' }),
   channelName: z.string().min(1, { message: 'Channel Name is required' }),
   notes: z.instanceof(File, { message: "File is required." })
 })
+
+// GraphQL Queries/Mutations
+const CREATE_NOTE = gql`
+  mutation CreateNotes(
+    $title: String!
+    $youtube_url: String!
+    $pdf_url: String!
+    $contentCreater: String!
+    $thumbnail: String
+    $channelName: String!
+  ) {
+    createNotes(
+      title: $title
+      youtube_url: $youtube_url
+      pdf_url: $pdf_url
+      contentCreater: $contentCreater
+      thumbnail: $thumbnail
+      channelName: $channelName
+    )
+  }
+`
+
+const GET_NOTES = gql`
+  query GetNotes(
+    $page: Int
+    $limit: Int
+    $sortBy: SortOrder
+    $saveCache: Boolean
+  ) {
+    getNotes(
+      page: $page
+      limit: $limit
+      sortBy: $sortBy
+      saveCache: $saveCache
+    ) {
+      notes {
+        id
+        title
+        youtube_url
+        pdf_url
+        thumbnail
+        contentCreater
+        channelName
+        likesCount
+        viewsCount
+        likedByMe
+        savedByMe
+        createdAt
+        updatedAt
+      }
+      totalCount
+      totalPages
+      currentPage
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+`
 
 const uploadToCloudinary = async (file: File): Promise<string> => {
   const formData = new FormData();
@@ -42,27 +100,25 @@ const uploadToCloudinary = async (file: File): Promise<string> => {
   const res = await axios.post(url, formData);
   
   console.log('Cloudinary response:', res);
-  console.log('object', res.data);
-  console.log('uploaded successfully to Cloudinary')
+  console.log('Uploaded successfully to Cloudinary')
   
-  return res.data.secure_url; // ✅ Cloudinary file URL
+  return res.data.secure_url;
 }
 
 const UploadNotes = () => {
   const supadata = new Supadata({
     apiKey: process.env.NEXT_PUBLIC_SUPDATA_API_KEY as string,
   });
-  const CREATE_NOTE=gql`
-  mutation CreateNotes($title:String!,$youtube_url:String!,$pdf_url:String!,$contentCreater:String!,$thumbnail:String!,$channelName:String!){
-    createNotes(title:$title,youtube_url:$youtube_url,pdf_url:$pdf_url,contentCreater:$contentCreater,thumbnail:$thumbnail,channelName:$channelName)
-  }`
-  const [createNotesMutation]=useMutation(CREATE_NOTE)
 
   const router = useRouter();
+  
+  const [createNotesMutation] = useMutation(CREATE_NOTE);
+  const [getNotesQuery] = useLazyQuery(GET_NOTES); // Using useMutation to manually trigger
+  
   const [loading, setLoading] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [autoloader , setAutoloader] = useState(false);
-  const [submitloader,setsubmitloader]=useState(false);
+  const [autoloader, setAutoloader] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,9 +130,10 @@ const UploadNotes = () => {
     },
   })
 
-  // ✅ Auto Extract function
+  // Auto Extract function
   const AutoExtract = async (url: string) => {
     if (!url) return;
+    
     setAutoloader(true);
     try {
       const video: YoutubeVideo = await supadata.youtube.video({ id: url });
@@ -95,47 +152,59 @@ const UploadNotes = () => {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     console.log("Final form values:", values);
-    try {
-      
 
+    try {
       // Upload to Cloudinary
       const fileUrl = await uploadToCloudinary(values.notes);
+      console.log("File uploaded to:", fileUrl);
 
-      const finalData = {
-        ...values,
-        youtube_url: youtubeUrl, // ✅ Add the YouTube URL from separate state
-        notes: fileUrl, // replace file with hosted URL
-      };
-
-      await createNotesMutation({
-        variables:{
-          title:finalData.title,
-          youtube_url:finalData.youtube_url,
-          pdf_url:finalData.notes,
-          contentCreater:finalData.creater,
-          thumbnail:finalData.thumbnail || "",
-          channelName:finalData.channelName
+      // Create note in database
+      const { data } = await createNotesMutation({
+        variables: {
+          title: values.title,
+          youtube_url: youtubeUrl,
+          pdf_url: fileUrl,
+          contentCreater: values.creater,
+          thumbnail: values.thumbnail || "",
+          channelName: values.channelName
         }
-      })
+      });
 
-      console.log("Uploaded successfully:", finalData);
-      router.push('/home');
+      if (data?.createNotes) {
+        console.log("✅ Note created successfully");
 
-      // TODO: send `finalData` to your GraphQL backend
-    } catch (error) {
-      console.error("Upload error:", error);
+        // Trigger cache rebuild by calling getNotes with saveCache=true
+        try {
+          await getNotesQuery({
+            variables: {
+              page: 1,
+              limit:9 ,
+              sortBy: "CREATED_AT_DESC",
+              saveCache: true // This rebuilds the cache without returning data
+            }
+          });
+          console.log("✅ Cache rebuilt successfully");
+        } catch (cacheError) {
+          console.error("⚠️ Cache rebuild error:", cacheError);
+          // Don't block the success flow if cache rebuild fails
+        }
+
+        // Navigate to home
+        router.push('/home');
+      }
+    } catch (error: any) {
+      console.error("❌ Upload error:", error);
+      alert(error.message || "Failed to upload notes. Please try again.");
     } finally {
       setLoading(false);
     }
-    // here you can call your GraphQL mutation
   }
 
   return (
-    <div className="max-w-2xl ">
-      {/* Replaced CardHeader with a normal header */}
+    <div className="max-w-2xl">
       <h1 className="text-2xl font-bold mb-2 text-center">Upload YouTube Notes</h1>
       
-      {/* ✅ YouTube URL input with separate state */}
+      {/* YouTube URL input */}
       <div className="flex gap-2 mb-4">
         <Input
           placeholder="Enter YouTube link"
@@ -144,7 +213,7 @@ const UploadNotes = () => {
         />
         <Button
           type="button"
-          onClick={() => AutoExtract(youtubeUrl)} // ✅ Use separate state
+          onClick={() => AutoExtract(youtubeUrl)}
           disabled={autoloader}
         >
           {autoloader ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch"}
@@ -190,7 +259,7 @@ const UploadNotes = () => {
             name="thumbnail"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Video Thumbnail</FormLabel>
+                <FormLabel>Video Thumbnail (Optional)</FormLabel>
                 <FormControl>
                   <Input placeholder="YouTube Video Thumbnail URL" {...field} />
                 </FormControl>
@@ -235,7 +304,11 @@ const UploadNotes = () => {
             )}
           />
 
-          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
+          <Button 
+            type="submit" 
+            className="w-full cursor-pointer" 
+            disabled={loading}
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
           </Button>
         </form>
