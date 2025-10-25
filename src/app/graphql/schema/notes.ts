@@ -141,6 +141,7 @@ export const noteTypeDefs = gql`
       thumbnail: String
       channelName: String
     ): Boolean
+    deleteNotes(noteId:ID!):Boolean
   }
 `;
 
@@ -282,6 +283,7 @@ export const noteResolvers = {
 
         // Format notes
         const formattedNotes = notes.map((note) => ({
+
           ...note,
           savedByMe: note.savedByMe.length > 0,
           likedByMe: note.likes.length > 0,
@@ -301,14 +303,14 @@ export const noteResolvers = {
         };
 
         // Cache page 1 results
-        if (page === 1 && saveCache) {
+        if (page === 1 ) {
           try {
-            await redis.set(cacheKey, JSON.stringify(response), { ex: 300 });
+            await redis.set(cacheKey, JSON.stringify(response));
             console.log("💾 Page 1 cached in Redis");
             
           } catch (error) {
             console.error("Redis cache write error:", error);
-            // Don't throw - caching failure shouldn't break the request
+            
           }
         }
 
@@ -459,6 +461,66 @@ export const noteResolvers = {
         throw new Error("Failed to create note");
       }
     },
+    // Replace your deleteNotes mutation with this:
+
+deleteNotes: async (
+  _: unknown,
+  { noteId }: { noteId: string },
+  context: Context
+) => {
+  // Check authentication
+  if (!context.user) {
+    throw new Error("Not authenticated");
+  }
+
+  console.log("Delete operation:", { noteId, userId: context.user.uid });
+
+  try {
+    // First, verify the note exists and belongs to the user
+    const note = await prisma.note.findUnique({
+      where: { id: noteId },
+      select: { userId: true },
+    });
+
+    if (!note) {
+      throw new Error("Note not found");
+    }
+
+    // Check if user owns the note
+    if (note.userId !== context.user.uid) {
+      throw new Error("Unauthorized: You can only delete your own notes");
+    }
+
+    // Delete related records first (if cascade is not set in schema)
+    await prisma.$transaction([
+      // Delete all likes associated with this note
+      prisma.like.deleteMany({
+        where: { noteId },
+      }),
+      // Delete all saved references
+      prisma.savedNote.deleteMany({
+        where: { noteId },
+      }),
+      // Delete all views associated with this note
+      prisma.view.deleteMany({
+        where: { noteId },
+      }),
+      // Finally delete the note
+      prisma.note.delete({
+        where: { id: noteId },
+      }),
+    ]);
+
+    // Invalidate cache after deletion
+   
+
+    console.log("✅ Note deleted successfully");
+    return true;
+  } catch (error: any) {
+    console.error("Delete operation failed:", error.message);
+    throw new Error(`Failed to delete note: ${error.message}`);
+  }
+},
 
     likeNotes: async (
       _: unknown,
@@ -502,12 +564,7 @@ export const noteResolvers = {
         ]);
 
         // Invalidate cache after like changes
-        try {
-          await updatePage1Cache({ rebuild: true });
-          console.log("✅ Cache invalidated after like operation");
-        } catch (cacheError) {
-          console.error("Cache invalidation error:", cacheError);
-        }
+      
 
         console.log("✅ Like operation successful");
         return true;
@@ -544,12 +601,7 @@ export const noteResolvers = {
         }
 
         // Optionally invalidate cache after save changes
-        try {
-          await updatePage1Cache({ rebuild: true });
-          console.log("✅ Cache invalidated after save operation");
-        } catch (cacheError) {
-          console.error("Cache invalidation error:", cacheError);
-        }
+       
 
         return true;
       } catch (error: any) {

@@ -1,7 +1,8 @@
 'use client'
+import { useAuth } from '@/lib/context/AuthContext';
 import { useMutation } from '@apollo/client/react';
 import gql from 'graphql-tag';
-import { Calendar, ExternalLink, FileText, Heart, Play, Save, Sparkles, User, Clock, RefreshCw, Youtube, BookmarkPlus, Eye } from 'lucide-react';
+import { Calendar, ExternalLink, FileText, Heart, Play, Save, Sparkles, User, Clock, RefreshCw, Youtube, BookmarkPlus, Eye, Trash2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react'
@@ -22,17 +23,32 @@ const VIEW_NOTE = gql`
   mutation ViewNote($noteId:ID!,$userId:ID!){
   viewNote(noteId:$noteId,userId:$userId)
   }`
+  
+const DELETE_NOTE = gql`
+  mutation DeleteNote($noteId:ID!){
+  deleteNotes(noteId:$noteId)
+  }
+  `
 
 function NoteCard({ note }: { note: any; }) {
+  const {user} = useAuth();
   const [liked, setLiked] = useState<boolean>(note.likedByMe);
   const [likesCount, setLikesCount] = useState<number>(note.likesCount || 0);
   const [saved, setSaved] = useState<boolean>(note.savedByMe || false);
   const [viewsCount, setViewCount] = useState<number>(note.viewsCount || 0);
-  console.log('likesCount', likesCount, note.title)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [likeNoteMutation, { loading: likeLoading }] = useMutation(LIKE_NOTE);
   const [saveNoteMutation, { loading: saveLoading }] = useMutation(SAVE_NOTE);
   const [viewNoteMutation, { loading: viewloading }] = useMutation(VIEW_NOTE);
+  const [deleteNoteMutation, {loading: deleteLoading}] = useMutation(DELETE_NOTE, {
+    // Update Apollo cache after deletion
+    update(cache, { data }) {
+      cache.evict({ id: cache.identify({ __typename: 'Note', id: note.id }) });
+      cache.gc();
+    }
+  });
   
   useEffect(() => {
     setLiked(note.likedByMe);
@@ -40,6 +56,23 @@ function NoteCard({ note }: { note: any; }) {
     setLikesCount(note.likesCount || 0);
     setViewCount(note.viewsCount || 0);
   }, [note.likedByMe, note.likesCount, note.savedByMe, note.viewsCount]);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteNoteMutation({
+        variables: {
+          noteId: note.id
+        }
+      });
+      // Optional: Show success message
+      console.log('Note deleted successfully');
+    } catch (err: any) {
+      console.error('Delete operation failed:', err.message);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }
 
   const handleSaveToggle = async () => {
     const newSavedState = !saved;
@@ -137,18 +170,6 @@ function NoteCard({ note }: { note: any; }) {
     });
   };
 
-  const formatDateTime = (dateString: any) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getTimeAgo = (dateString: any) => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
@@ -170,7 +191,49 @@ function NoteCard({ note }: { note: any; }) {
   };
 
   return (
-    <div className="group relative bg-gradient-to-br from-white via-white to-gray-50 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-200 hover:border-purple-300">
+    <div className={`group relative bg-gradient-to-br from-white via-white to-gray-50 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-200 hover:border-purple-300 ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 rounded-2xl">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-100 animate-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete Note?</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{note.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Thumbnail Section */}
       <div className="relative overflow-hidden bg-gray-900">
         <div className="w-full h-56 relative group/thumb overflow-hidden">
@@ -203,20 +266,35 @@ function NoteCard({ note }: { note: any; }) {
             </button>
           </div>
 
-          <button 
-            onClick={handleSaveToggle}
-            disabled={saveLoading}
-            className="bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 shadow-xl transition-all duration-200 hover:scale-110 disabled:opacity-50"
-            aria-label={saved ? "Unsave" : "Save"}
-          >
-            <BookmarkPlus
-              className={`w-4 h-4 transition-all duration-200 ${
-                saved 
-                  ? "text-yellow-400 fill-yellow-400" 
-                  : "text-white hover:text-yellow-400"
-              } ${saveLoading ? 'animate-spin' : ''}`}
-            />
-          </button>
+          {/* Right side actions */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleSaveToggle}
+              disabled={saveLoading}
+              className="bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 shadow-xl transition-all duration-200 hover:scale-110 disabled:opacity-50"
+              aria-label={saved ? "Unsave" : "Save"}
+            >
+              <BookmarkPlus
+                className={`w-4 h-4 transition-all duration-200 ${
+                  saved 
+                    ? "text-yellow-400 fill-yellow-400" 
+                    : "text-white hover:text-yellow-400"
+                } ${saveLoading ? 'animate-spin' : ''}`}
+              />
+            </button>
+
+            {/* Delete Button - Only for note owner */}
+            {user?.uid === note.userId && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={deleteLoading}
+                className="bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 shadow-xl transition-all duration-200 hover:scale-110 hover:bg-red-600/80 disabled:opacity-50 group/delete"
+                aria-label="Delete note"
+              >
+                <Trash2 className="w-4 h-4 text-white group-hover/delete:text-red-200 transition-colors duration-200" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* User Profile Picture - Bottom Left */}

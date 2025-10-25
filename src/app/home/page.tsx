@@ -110,13 +110,13 @@ const YouTubeNotesPage = () => {
     }
   }, [activeSection]);
 
-  const { token } = useAuth();
+  const { user } = useAuth();
   
   const [getNotes, { data: notesData, loading: notesLoading, error: notesError }] = useLazyQuery(GET_NOTES);
 
   // Function to fetch notes
   const fetchNotes = useCallback((page = currentPage) => {
-    if (token) {
+    if (user) {
       getNotes({
         variables: {
           page,
@@ -138,12 +138,12 @@ theme: "dark",
 transition: Bounce,
 });
     }
-  }, [token, currentPage, getNotes, getSortType]);
+  }, [user, currentPage, getNotes, getSortType]);
 
-  // Initial fetch when token is available
+  // Initial fetch when user is available
   useEffect(() => {
     fetchNotes(1);
-  }, [token, getSortType()]);
+  }, [user, getSortType()]);
 
   console.log('notesData:', notesData);
 
@@ -168,14 +168,14 @@ transition: Bounce,
       setIsSearching(false);
       setCurrentPage(1);
     }
-  }, [debouncedSearchTerm, searchBy, searchNotes, token]);
+  }, [debouncedSearchTerm, searchBy, searchNotes, user]);
 
   // Effect to refetch notes when section or page changes (only if not searching)
   useEffect(() => {
-    if (!isSearching && token) {
+    if (!isSearching && user) {
       fetchNotes(currentPage);
     }
-  }, [activeSection, currentPage, isSearching, fetchNotes, token]);
+  }, [activeSection, currentPage, isSearching, fetchNotes, user]);
 
   // Effect to handle search pagination
   useEffect(() => {
@@ -190,7 +190,7 @@ transition: Bounce,
         
       });
     }
-  }, [currentPage, isSearching, debouncedSearchTerm, searchBy, searchNotes, token]);
+  }, [currentPage, isSearching, debouncedSearchTerm, searchBy, searchNotes, user]);
 
   // Get current data and pagination info
   const currentData = isSearching ? searchData?.searchNotes : notesData?.getNotes;
