@@ -9,6 +9,38 @@ import { Bounce, toast } from 'react-toastify';
 import NoteLoader from '@/components/ui/NoteLoader';
 import { useRouter } from 'next/navigation';
 
+type User = {
+  profilePic?: string;
+  // add more user fields if needed
+};
+
+type Note = {
+  id: string;
+  title: string;
+  youtube_url?: string;
+  likesCount?: number;
+  savedByMe?: boolean;
+  user?: User;
+  viewsCount?: number;
+  likedByMe?: boolean;
+  contentCreater?: string;
+  channelName?: string;
+  thumbnail?: string;
+  pdf_url?: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type NotesResponse = {
+  notes: Note[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
+
 // GraphQL Queries with offset pagination
 const GET_NOTES = gql`
   query GetNotes($page: Int!, $limit: Int!, $sortBy: SortOrder!) {
@@ -69,7 +101,7 @@ const SEARCH_NOTES = gql`
 `;
 
 // Custom hook for debouncing
-const useDebounce = (value, delay) => {
+const useDebounce = (value:string, delay:number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
@@ -111,7 +143,7 @@ const YouTubeNotesPage = () => {
 
   const { user } = useAuth();
   
-  const [getNotes, { data: notesData, loading: notesLoading, error: notesError }] = useLazyQuery(GET_NOTES);
+  const [getNotes, { data: notesData, loading: notesLoading, error: notesError }] = useLazyQuery<{getNotes:NotesResponse}>(GET_NOTES);
 
   // Function to fetch notes
   const fetchNotes = useCallback((page = currentPage) => {
@@ -156,7 +188,7 @@ const YouTubeNotesPage = () => {
   console.log('notesData:', notesData);
 
   // Lazy query for searching notes
-  const [searchNotes, { data: searchData, loading: searchLoading, error: searchError }] = useLazyQuery(SEARCH_NOTES);
+  const [searchNotes, { data: searchData, loading: searchLoading, error: searchError }] = useLazyQuery<{searchNotes:NotesResponse}>(SEARCH_NOTES);
 
   // Effect to handle search
   useEffect(() => {
@@ -212,7 +244,7 @@ const YouTubeNotesPage = () => {
   const error = isSearching ? searchError : notesError;
 
   // Handle section change
-  const handleSectionChange = useCallback((section) => {
+  const handleSectionChange = useCallback((section:string) => {
     setActiveSection(section);
     setCurrentPage(1);
     if (isSearching) {
@@ -222,18 +254,21 @@ const YouTubeNotesPage = () => {
   }, [isSearching]);
 
   // Handle search term change
-  const handleSearchChange = useCallback((e) => {
+  const handleSearchChange = useCallback((e:React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   }, []);
 
   // Handle search filter change
-  const handleSearchByChange = useCallback((e) => {
-    setSearchBy(e.target.value);
+ const handleSearchByChange = useCallback(
+  (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSearchBy(e.target.value as 'TITLE' | 'CREATOR' | 'CHANNEL' | 'URL');
     setCurrentPage(1);
-  }, []);
+  },
+  []
+);
 
   // Handle page change
-  const handlePageChange = useCallback((newPage) => {
+  const handlePageChange = useCallback((newPage:number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
       // Scroll to top smoothly

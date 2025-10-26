@@ -185,7 +185,6 @@ export const noteResolvers = {
 
       const cacheKey = `note:page:${page}`;
 
-      // Check cache for page 1 (only when not rebuilding cache)
       if (page === 1 && !saveCache) {
         try {
           const cached = await redis.get(cacheKey);

@@ -170,7 +170,7 @@ export const userProfileResolvers = {
     ]);
 
     return false;
-  } catch (error) {
+  } catch (error:any) {
     // If the record already exists (race condition), ignore it
     if (error.code === "P2002") {
       // Unique constraint violation => already viewed
@@ -270,7 +270,7 @@ export const userProfileResolvers = {
 
         return true;
 
-      }catch(error){
+      }catch(error:any){
         console.log('Deletion of links is not successful',error.message)
       }
     },
@@ -291,7 +291,7 @@ export const userProfileResolvers = {
           updatedName
         
 
-      }catch(error){
+      }catch(error:any){
         throw new Error('Failed to set UserName',error.message)
       }
 

@@ -32,6 +32,21 @@ const formSchema = z.object({
   notes: z.instanceof(File, { message: "File is required." })
 })
 
+
+interface CreateNotesVariables {
+  title: string;
+  youtube_url: string;
+  pdf_url: string;
+  contentCreater: string;
+  thumbnail?: string;
+  channelName: string;
+}
+
+// Response type for CreateNotes mutation
+interface CreateNotesData {
+  createNotes: boolean; // or whatever the mutation actually returns
+}
+
 // GraphQL Queries/Mutations
 const CREATE_NOTE = gql`
   mutation CreateNotes(
@@ -112,8 +127,8 @@ const UploadNotes = () => {
   });
 
   const router = useRouter();
-  
-  const [createNotesMutation] = useMutation(CREATE_NOTE);
+const [createNotesMutation] = useMutation<CreateNotesData, CreateNotesVariables>(CREATE_NOTE);
+
   const [getNotesQuery] = useLazyQuery(GET_NOTES); // Using useMutation to manually trigger
   
   const [loading, setLoading] = useState(false);
