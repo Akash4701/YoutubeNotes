@@ -14,7 +14,7 @@ export const userTypeDefs = gql`
   }
 
   extend type Mutation {
-    createUser(name:String,email:String,password:String):Boolean
+    createUser(profilePic:String,name:String,email:String,password:String):Boolean
   }
 `;
 
@@ -25,7 +25,7 @@ export const userResolvers = {
   },
   Mutation: {
     
-    createUser:async(_:any,{name,email,password}:{name:string,email:string,password:string},context:any)=>{
+    createUser:async(_:any,{profilePic,name,email,password}:{profilePic:string,name:string,email:string,password:string},context:any)=>{
       if(!context.user){
           throw new Error("Not authenticated");
       }
@@ -33,6 +33,7 @@ export const userResolvers = {
             const user=await prisma.user.create({
                 data:{
                   id:context.user.uid,
+                  profilePic,
                     name,
                     email,
                     password

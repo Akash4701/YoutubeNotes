@@ -60,7 +60,7 @@ type TabType = 'uploads' | 'saved' | 'liked';
 // GraphQL Queries
 const FETCH_USER_PROFILE = gql`
   query FetchUser($userId: ID!) {
-    fetchUser(UserId: $userId) {
+    fetchUser(userId: $userId) {
       name
       profilePic
       likes
@@ -87,16 +87,19 @@ const GET_NOTES = gql`
       notes {
         id
         title
-        viewsCount
-        thumbnail
-        contentCreater
-        channelName
         youtube_url
-        pdf_url
-        userId
         likesCount
         savedByMe
+        user{
+        profilePic
+        }
+        viewsCount
         likedByMe
+        contentCreater
+        channelName
+        thumbnail
+        pdf_url
+        userId
         createdAt
         updatedAt
       }
@@ -140,8 +143,8 @@ const UserProfile: React.FC = () => {
   const params = useParams();
   const userId = params?.userId as string;
   console.log('userId',userId);
-  const token = useAuth();
-  console.log('tokenref',token);
+  const {user} = useAuth();
+  console.log('userref',user);
   
   // State
   const [activeTab, setActiveTab] = useState<TabType>('uploads');
@@ -194,7 +197,7 @@ const UserProfile: React.FC = () => {
 
   // Memoized fetch notes function
   const fetchNotes = useCallback(() => {
-    if (!userId || !token) return;
+    if (!userId || !user) return;
     console.log('userId in notes',userId);
 
     const variables: Record<string, any> = {
@@ -211,7 +214,7 @@ const UserProfile: React.FC = () => {
     }
 
     getNotes({ variables });
-  }, [token,userId,  activeTab, getNotes]);
+  }, [user,userId,  activeTab, getNotes]);
 
   // Effects
   useEffect(() => {
@@ -220,7 +223,7 @@ const UserProfile: React.FC = () => {
       setProfileImage(profileData.fetchUser.profilePic);
       setProfileLinks(profileData.fetchUser.ProfileLinks || []);
     }
-  }, [token,profileData]);
+  }, [user,profileData]);
 
   useEffect(() => {
     fetchNotes();
@@ -394,13 +397,17 @@ const UserProfile: React.FC = () => {
                   userName.charAt(0).toUpperCase() || 'U'
                 )}
               </div>
-              <button
+              {user?.uid==userId && (
+                  <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingPic}
                 className="absolute bottom-0 right-0 bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-all transform hover:scale-110 disabled:opacity-50"
               >
                 <Camera size={18} />
               </button>
+
+              )}
+            
               <input
                 ref={fileInputRef}
                 type="file"
@@ -413,7 +420,7 @@ const UserProfile: React.FC = () => {
             {/* Profile Info */}
             <div className="flex-1 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-                {isEditingName ? (
+                {(user?.uid===userId && isEditingName) ? (
                   <input
                     type="text"
                     value={userName}
@@ -475,16 +482,20 @@ const UserProfile: React.FC = () => {
                       >
                         {link.linkUrl}
                       </a>
-                      <button
+                      {
+                        user?.uid===userId && 
+                          <button
                         onClick={() => removeLink(link.id)}
                         disabled={deletingLink}
                         className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                       >
                         ×
                       </button>
+                      }
+                    
                     </div>
                   ))}
-                  {!showLinkForm && (
+                  {user?.uid===userId && !showLinkForm && (
                     <button
                       onClick={() => setShowLinkForm(true)}
                       className="bg-purple-100 text-purple-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors"

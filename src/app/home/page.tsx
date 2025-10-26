@@ -7,6 +7,7 @@ import NoteCard from '@/components/NoteCard';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Bounce, toast } from 'react-toastify';
 import NoteLoader from '@/components/ui/NoteLoader';
+import { useRouter } from 'next/navigation';
 
 // GraphQL Queries with offset pagination
 const GET_NOTES = gql`
@@ -20,10 +21,8 @@ const GET_NOTES = gql`
         savedByMe
         user{
         profilePic
-        
         }
         viewsCount
-        
         likedByMe
         contentCreater
         channelName
@@ -116,7 +115,8 @@ const YouTubeNotesPage = () => {
 
   // Function to fetch notes
   const fetchNotes = useCallback((page = currentPage) => {
-    if (user) {
+    if(!user) return;
+    
       getNotes({
         variables: {
           page,
@@ -125,23 +125,31 @@ const YouTubeNotesPage = () => {
         },
         
       });
-    }else{
-      toast.warn('You are not registered yet!Please register', {
-position: "top-right",
-autoClose: 1999,
-hideProgressBar: false,
-closeOnClick: false,
-pauseOnHover: true,
-draggable: true,
-progress: undefined,
-theme: "dark",
-transition: Bounce,
-});
-    }
+    
   }, [user, currentPage, getNotes, getSortType]);
 
   // Initial fetch when user is available
+  const router=useRouter();
   useEffect(() => {
+      if ( user === undefined) return; // wait until it’s set
+  if (!user) {
+    toast.warn('You are not registered yet! Please register', { 
+         position: "top-right",
+              autoClose: 1999,
+              hideProgressBar: false,
+              closeOnClick: false,
+              pauseOnHover: true,
+              draggable: true,
+              progress: undefined,
+              theme: "dark",
+              transition: Bounce,
+
+
+
+     });
+     router.push("/")
+    return;
+  }
     fetchNotes(1);
   }, [user, getSortType()]);
 

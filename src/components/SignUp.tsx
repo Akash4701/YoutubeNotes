@@ -40,8 +40,8 @@ const formSchema = z.object({
 
 const SignUp = () => {
   const CREATE_USER=gql`
-  mutation CreateUser($name:String!,$email:String!,$password:String!){
-  createUser(name:$name,email:$email,password:$password)
+  mutation CreateUser($profilePic:String!,$name:String!,$email:String!,$password:String!){
+  createUser(profilePic:$profilePic,name:$name,email:$email,password:$password)
   }`
     const router=useRouter();
     const [error,setError]=useState('');
@@ -78,6 +78,8 @@ transition: Bounce,
         console.log('authUser',authUser);
          await createUserMutation({
         variables: {
+          profilePic:values.name[0],
+          
           name: values.name,
           email: values.email,
           password: values.password,

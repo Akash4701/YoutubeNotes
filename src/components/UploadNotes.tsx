@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
+import { toast, Zoom } from 'react-toastify';
 
 const formSchema = z.object({
   title: z.string().min(1, { message: 'Name is required' }),
@@ -184,6 +185,17 @@ const UploadNotes = () => {
             }
           });
           console.log("✅ Cache rebuilt successfully");
+        toast.success('Successfully Uploaded your Note', {
+position: "top-right",
+autoClose: 5000,
+hideProgressBar: false,
+closeOnClick: false,
+pauseOnHover: true,
+draggable: true,
+progress: undefined,
+theme: "dark",
+transition: Zoom,
+});
         } catch (cacheError) {
           console.error("⚠️ Cache rebuild error:", cacheError);
           // Don't block the success flow if cache rebuild fails

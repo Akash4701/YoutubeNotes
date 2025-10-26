@@ -32,7 +32,7 @@ export const userProfileTypeDefs = gql`
     }
 
   extend type Query {
-    fetchUser(UserId: ID!): UserProfile
+    fetchUser(userId: ID!): UserProfile
     fetchUserNavbarProfile:UserNavbarProfile
     
   }
@@ -89,7 +89,9 @@ export const userProfileResolvers = {
       })
       const saves = await prisma.savedNote.count({
         where: {
-            userId,
+          note:{
+            userId
+          },
         },
       });
       const likes = await prisma.like.count({
@@ -126,14 +128,17 @@ export const userProfileResolvers = {
   },
 
   Mutation: {
-   viewNote: async (_: any, { userId, noteId }: { userId: string; noteId: string }) => {
+   viewNote: async (_: any, { userId, noteId }: { userId: string; noteId: string },context:any) => {
   try {
     // Try to find an existing view record
+    if(!context.user){
+      throw new Error("User not authenticated");
+    }
     const existing = await prisma.view.findUnique({
       where: {
         noteId_userId:{
         
-          userId, 
+          userId:context.user.uid, 
           noteId
        }
        },
@@ -150,7 +155,7 @@ export const userProfileResolvers = {
     await prisma.$transaction([
       prisma.view.create({
         data: {
-          userId,
+          userId:context.user.uid,
           noteId,
         },
       }),

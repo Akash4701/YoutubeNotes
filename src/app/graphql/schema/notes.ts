@@ -199,23 +199,27 @@ export const noteResolvers = {
           }
         } catch (error) {
           console.error("Redis cache read error:", error);
-          // Continue to fetch from database if cache fails
+          
         }
       }
 
       // Build where clause
-      const whereClause: any = userId ? { userId } : {};
+      const whereClause: any =  {};
+      if (!saved && !userliked && userId) {
+  whereClause.userId = userId; 
+}
+
 
       if (saved) {
         whereClause.savedByMe = {
-          some: { userId: context.user.uid },
+          some: { userId: userId},
         };
       }
 
       if (userliked) {
         whereClause.likes = {
           some: {
-            userId: context.user.uid,
+            userId: userId,
             liked: true,
           },
         };
