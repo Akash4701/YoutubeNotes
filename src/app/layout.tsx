@@ -6,7 +6,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import {client} from "@/lib/apollo-client";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import Navbar from "@/components/navbar";
- import { ToastContainer, toast } from 'react-toastify';
+ import { ToastContainer } from 'react-toastify';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

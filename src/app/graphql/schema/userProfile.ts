@@ -42,7 +42,7 @@ export const userProfileTypeDefs = gql`
     createUserProfileLinks(userId:ID!,   linkName: String!,linkUrl: String!):ProfileLink
       deleteUserProfileLinks(id:String!):Boolean
       createUserName(userId:ID!,name:String):UserName
-      viewNote(userId:ID!,noteId:ID!):Boolean
+      viewNote(noteId:ID!):Boolean
   }
 `;
 
@@ -128,7 +128,7 @@ export const userProfileResolvers = {
   },
 
   Mutation: {
-   viewNote: async (_: any, { userId, noteId }: { userId: string; noteId: string },context:any) => {
+   viewNote: async (_: any, {  noteId }: {  noteId: string },context:any) => {
   try {
     // Try to find an existing view record
     if(!context.user){
@@ -186,6 +186,9 @@ export const userProfileResolvers = {
       { userId, profileUrl }: { profileUrl: string; userId: string },
       context: any
     ) => {
+     if(!context.user){
+      throw new Error("User not authenticated");
+    }
 
      
     
@@ -215,9 +218,9 @@ export const userProfileResolvers = {
       }: { userId: string; linkName: string; linkUrl: string  },
       context: any
     ) => {
-      // if (!context.user) {
-      //   console.log("not authenticated");
-      // }
+      if (!context.user) {
+        console.log("not authenticated");
+      }
       const newOrUpdatedLink = await prisma.userLink.upsert({
         where: {
           userId_linkUrl:{
@@ -256,8 +259,7 @@ export const userProfileResolvers = {
         id
         
         
-      }: { id: string  },
-      context: any
+      }: { id: string  }
     )=>{
       try{
         const deletedLinks=await prisma.userLink.delete({
@@ -267,6 +269,7 @@ export const userProfileResolvers = {
           
         },
         })
+        if(deletedLinks)
 
         return true;
 
@@ -276,6 +279,9 @@ export const userProfileResolvers = {
     },
 
     createUserName:async(_:any,{userId,name}:{userId:string,name:string},context:any)=>{
+     if (!context.user) {
+        console.log("not authenticated");
+      }
       try{
         const updatedName=await prisma.user.update({
           where:{
@@ -287,8 +293,11 @@ export const userProfileResolvers = {
 
         })
          
-        return 
-          updatedName
+        return {
+           updatedName
+
+        }
+         
         
 
       }catch(error:any){

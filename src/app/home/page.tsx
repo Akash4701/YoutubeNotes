@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, TrendingUp, Clock, Upload, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
-import { useQuery, useLazyQuery } from '@apollo/client/react';
+import { useLazyQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 import NoteCard from '@/components/NoteCard';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -183,7 +183,7 @@ const YouTubeNotesPage = () => {
     return;
   }
     fetchNotes(1);
-  }, [user, getSortType()]);
+  }, [user, getSortType(),fetchNotes, router]);
 
   console.log('notesData:', notesData);
 
@@ -191,8 +191,9 @@ const YouTubeNotesPage = () => {
   const [searchNotes, { data: searchData, loading: searchLoading, error: searchError }] = useLazyQuery<{searchNotes:NotesResponse}>(SEARCH_NOTES);
 
   // Effect to handle search
+  const trimmedSearchTerm = debouncedSearchTerm.trim();
   useEffect(() => {
-    if (debouncedSearchTerm.trim()) {
+    if (trimmedSearchTerm) {
       setIsSearching(true);
       setCurrentPage(1);
       
@@ -208,7 +209,7 @@ const YouTubeNotesPage = () => {
       setIsSearching(false);
       setCurrentPage(1);
     }
-  }, [debouncedSearchTerm, searchBy, searchNotes, user]);
+  }, [trimmedSearchTerm, searchBy, searchNotes, user]);
 
   // Effect to refetch notes when section or page changes (only if not searching)
   useEffect(() => {
@@ -239,7 +240,6 @@ const YouTubeNotesPage = () => {
   const totalPages = currentData?.totalPages || 1;
   const hasNextPage = currentData?.hasNextPage || false;
   const hasPreviousPage = currentData?.hasPreviousPage || false;
-  const pageNumber = currentData?.currentPage || currentPage;
   const isLoading = isSearching ? searchLoading : notesLoading;
   const error = isSearching ? searchError : notesError;
 

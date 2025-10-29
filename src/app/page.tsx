@@ -2,7 +2,6 @@
 import { useAuth } from "@/lib/context/AuthContext";
 import { Search, Star, BookOpen, DollarSign, ArrowRight,Award, Zap, PlayCircle,  Sparkles } from "lucide-react";
 import { redirect } from "next/navigation";
-import { useState } from "react";
 import { Bounce, toast } from "react-toastify";
 
 export default function Home() {

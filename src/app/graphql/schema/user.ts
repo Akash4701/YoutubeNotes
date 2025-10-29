@@ -39,6 +39,7 @@ export const userResolvers = {
                     password
                 }
             })
+            if(user)
             return true;
     
     

@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
-import { updatePage1Cache } from "@/lib/updatePage1Cache";
 import { gql } from "graphql-tag";
 
 // Type definitions

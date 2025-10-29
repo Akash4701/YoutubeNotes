@@ -3,7 +3,7 @@ import { ApolloServer } from "@apollo/server";
 import { NextRequest } from "next/server";
 
 import { typeDefs ,resolvers} from "@/app/graphql/schema/index";
-import { getAuth } from "firebase-admin/auth";
+
 import { adminAuth } from "@/lib/firebase/admin";
 
 

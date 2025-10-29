@@ -64,9 +64,6 @@ export default function CommentItem({
     });
   };
 
-  const getInitials = (authorId: string) => {
-    return authorId.substring(0, 2).toUpperCase();
-  };
 
   const getAvatarColor = (authorId: string) => {
     const colors = [

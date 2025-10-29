@@ -20,8 +20,8 @@ const SAVE_NOTE = gql`
   `
 
 const VIEW_NOTE = gql`
-  mutation ViewNote($noteId:ID!,$userId:ID!){
-  viewNote(noteId:$noteId,userId:$userId)
+  mutation ViewNote($noteId:ID!){
+  viewNote(noteId:$noteId)
   }`
   
 const DELETE_NOTE = gql`
@@ -106,7 +106,6 @@ function NoteCard({ note }: { note: any; }) {
       
         const res = await viewNoteMutation({
           variables: {
-            userId: note.userId,
             noteId: note.id
           }
         })
