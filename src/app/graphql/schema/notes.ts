@@ -93,7 +93,8 @@ export const noteTypeDefs = gql`
 
   enum SortOrder {
     TREND_DESC
-    LIKES_ASC
+    LIKES_DESC
+    SAVED_DESC
     CREATED_AT_DESC
     CREATED_AT_ASC
     UPDATED_AT_DESC
@@ -149,11 +150,13 @@ const CACHE_CONFIG = {
   TTL: {
     TREND_DESC: 300,        // 5 minutes - changes frequently
     CREATED_AT_DESC: 300,   // 5 minutes - new notes added often
-    CREATED_AT_ASC: 600,    // 10 minutes - oldest notes rarely change
+    CREATED_AT_ASC: 600, 
+    LIKES_DESC:300,    
+    SAVED_DESC:600// 10 minutes - oldest notes rarely change
   },
   
   // Only cache these specific sort orders
-  CACHEABLE_SORTS: ['TREND_DESC', 'CREATED_AT_DESC', 'CREATED_AT_ASC'],
+  CACHEABLE_SORTS: ['TREND_DESC', 'CREATED_AT_DESC', 'CREATED_AT_ASC','LIKES_DESC','SAVED_DESC'],
 };
 
 // Helper function to generate cache key
@@ -304,6 +307,11 @@ export const noteResolvers = {
             ];
           case "CREATED_AT_DESC":
             return { createdAt: "desc" };
+            case "LIKES_DESC":
+              return   { likes: { _count: "desc" } }
+              case "SAVED_DESC":
+                return {savedByMe: { _count: "desc" }}
+
           case "CREATED_AT_ASC":
             return { createdAt: "asc" };
           case "UPDATED_AT_DESC":
