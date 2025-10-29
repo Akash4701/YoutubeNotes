@@ -131,13 +131,13 @@ const YouTubeNotesPage = () => {
   const getSortType = useCallback(() => {
     switch (activeSection) {
       case 'trending':
-        return 'LIKES_DESC';
+        return 'TREND_DESC';
       case 'newly-uploaded':
         return 'CREATED_AT_DESC';
       case 'all-notes':
-        return 'CREATED_AT_DESC';
+        return 'CREATED_AT_ASC';
       default:
-        return 'LIKES_DESC';
+        return 'TREND_DESC';
     }
   }, [activeSection]);
 

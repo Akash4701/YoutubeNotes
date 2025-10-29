@@ -1,3 +1,5 @@
+
+'use client'
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react';
 import gql from 'graphql-tag';
 import React, { useState } from 'react';
@@ -12,6 +14,10 @@ const ADD_COMMENT = gql`
       noteId
       parentId
       authorId
+      author{
+      name
+      profilePic
+      }
       createdAt
       updatedAt
     }
@@ -24,6 +30,10 @@ const FETCH_COMMENTS = gql`
     id
     content
     authorId
+    author{
+    name
+    profilePic
+    }
     createdAt
     updatedAt
     parentId
@@ -42,6 +52,10 @@ const FETCH_NESTED_REPLIES = gql`
     authorId
     createdAt
     updatedAt
+    author{
+    name
+    profilePic
+    }
     parentId
     hasMoreReplies
     replyCount
@@ -49,7 +63,11 @@ const FETCH_NESTED_REPLIES = gql`
 }
 
 `;
+type author={
+  name:string;
+  profilePic:string;
 
+}
 type Comment = {
   id: string;
   content: string;
@@ -57,6 +75,7 @@ type Comment = {
   parentId: string | null;
   replies: Comment[];
   authorId: string;
+  author:author;
   createdAt: string;
   updatedAt: string;
   hasMoreReplies?: boolean;

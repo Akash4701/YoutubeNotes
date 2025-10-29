@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { MessageCircle, User, Clock, Send, X, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
+import {useRouter} from 'next/navigation';
 
+
+type author={
+  name:string;
+  profilePic:string
+
+}
 type Comment = {
   id: string;
   content: string;
@@ -8,6 +15,7 @@ type Comment = {
   parentId: string | null;
   replies: Comment[];
   authorId: string;
+  author:author;
   createdAt: string;
   updatedAt: string;
   hasMoreReplies?: boolean;
@@ -99,6 +107,17 @@ export default function CommentItem({
   const showFetchMore = comment.hasMoreReplies ;
   const maxDepth = 5;
   const shouldIndent = depth < maxDepth;
+  const router=useRouter();
+     const handleProfileClick = () => {
+    if (comment?.authorId) {
+      router.push(`/user/${comment.authorId}`);
+    }
+  };
+
+  // Get the first letter of the name (capitalized)
+  const initial = comment?.author?.name
+    ? comment.author.name.charAt(0).toUpperCase()
+    : "A"; // fallback to 'A' if even name missing
 
   return (
     <div className={`relative ${shouldIndent ? 'ml-0' : 'ml-0'}`}>
@@ -106,15 +125,28 @@ export default function CommentItem({
         <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
         
         <div className="relative flex gap-3">
-          <div className={`flex-shrink-0 w-10 h-10 ${getAvatarColor(comment.authorId)} rounded-full flex items-center justify-center text-white font-bold shadow-md text-sm`}>
-            {getInitials(comment.authorId)}
-          </div>
+            <button
+      onClick={handleProfileClick}
+      className={`flex-shrink-0 w-10 h-10 ${getAvatarColor(
+        comment.authorId
+      )} rounded-full flex items-center justify-center text-white font-bold shadow-md text-sm`}
+    >
+      {comment?.author?.profilePic ? (
+        <img
+          src={comment.author.profilePic}
+          alt={comment.author.name || "User"}
+          className="w-full h-full object-cover rounded-full"
+        />
+      ) : (
+        <span>{initial}</span>
+      )}
+    </button>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <User className="w-3.5 h-3.5 text-gray-500" />
-                <span className="font-semibold text-gray-900 text-sm">{comment.authorId}</span>
+                <span className="font-semibold text-gray-900 text-sm">{comment?.author?.name || "Anonymous"}</span>
               </div>
               <span className="text-gray-400 text-xs">•</span>
               <div className="flex items-center gap-1 text-gray-500">

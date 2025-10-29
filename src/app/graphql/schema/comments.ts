@@ -4,12 +4,19 @@ import { gql } from "graphql-tag";
 export const commentTypeDefs = gql`
   scalar DateTime
 
+  type author{
+  name:String
+  profilePic:String
+  }
+
   type Comment {
     id: ID!
     content: String!
     authorId: String!
     noteId: ID!
     parentId: ID
+   author:author
+
     createdAt: DateTime
     updatedAt: DateTime
   }
@@ -20,6 +27,7 @@ export const commentTypeDefs = gql`
     authorId: String!
     replies: [Reply]
     parentId: ID
+     author:author
     createdAt: DateTime
     updatedAt: DateTime
     hasMoreReplies: Boolean!
@@ -35,6 +43,7 @@ export const commentTypeDefs = gql`
     createComment(content: String!, noteId: ID!, parentId: String): Comment
   }
 `;
+
 
 // Helper function to fetch replies recursively with depth limit
 async function fetchRepliesWithDepth(
@@ -96,6 +105,14 @@ export const commentResolvers = {
         },
         orderBy: {
           createdAt: 'desc'
+        },
+        include:{
+          author:{
+            select:{
+              name:true,
+              profilePic:true
+            }
+          }
         }
       });
 
@@ -113,6 +130,11 @@ export const commentResolvers = {
             content: comment.content,
             authorId: comment.authorId,
             parentId: comment.parentId,
+            author:{
+              name:comment.author.name,
+              profilePic:comment.author.profilePic
+
+            },
             createdAt: comment.createdAt,
             updatedAt: comment.updatedAt,
             replies,
@@ -155,6 +177,14 @@ export const commentResolvers = {
           authorId: context.user.user_id,
           noteId,
           ...(parentId && { parentId })
+        },
+        include:{
+          author:{
+            select:{
+              name:true,
+              profilePic:true
+            }
+          }
         }
       });
 

@@ -309,14 +309,18 @@ transition: Zoom,
               </FormItem>
             )}
           />
-
+            <p className="text-gray-600 leading-relaxed text-base mb-4">
+             Supported Pdf Format Only 
+             </p>
           {/* Notes Upload */}
           <FormField
             control={form.control}
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Your Notes</FormLabel>
+                <FormLabel>Your Note   <p className="text-gray-600 leading-relaxed  ">
+             (Supported Pdf Format Only)
+             </p></FormLabel>
                 <FormControl>
                   <Input
                     type="file"

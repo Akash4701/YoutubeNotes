@@ -93,14 +93,13 @@ export const noteTypeDefs = gql`
   }
 
   enum SortOrder {
-    LIKES_DESC
+    TREND_DESC
     LIKES_ASC
     CREATED_AT_DESC
     CREATED_AT_ASC
     UPDATED_AT_DESC
     UPDATED_AT_ASC
-    TITLE_ASC
-    TITLE_DESC
+   
   }
 
   enum SearchField {
@@ -114,7 +113,7 @@ export const noteTypeDefs = gql`
     getNoteById(id: ID!): Note!
     getNotes(
       page: Int = 1
-      limit: Int = 10
+      limit: Int = 9
       sortBy: SortOrder = CREATED_AT_DESC
       userId: ID
       saved: Boolean
@@ -145,6 +144,49 @@ export const noteTypeDefs = gql`
   }
 `;
 
+
+const CACHE_CONFIG = {
+  // Cache TTL (Time To Live) in seconds
+  TTL: {
+    TREND_DESC: 300,        // 5 minutes - changes frequently
+    CREATED_AT_DESC: 300,   // 5 minutes - new notes added often
+    CREATED_AT_ASC: 600,    // 10 minutes - oldest notes rarely change
+  },
+  
+  // Only cache these specific sort orders
+  CACHEABLE_SORTS: ['TREND_DESC', 'CREATED_AT_DESC', 'CREATED_AT_ASC'],
+};
+
+// Helper function to generate cache key
+function getCacheKey(page: number, sortBy: string): string {
+  return `note:page:${page}:sort:${sortBy}`;
+}
+
+// Helper function to check if sort order should be cached
+function isCacheableSort(sortBy: string): boolean {
+  return CACHE_CONFIG.CACHEABLE_SORTS.includes(sortBy);
+}
+
+// Helper function to get TTL for a sort order
+function getCacheTTL(sortBy: string): number {
+  return CACHE_CONFIG.TTL[sortBy as keyof typeof CACHE_CONFIG.TTL] || 300;
+}
+
+async function invalidateAllNoteCaches() {
+  try {
+    const keysToDelete = CACHE_CONFIG.CACHEABLE_SORTS.map(sort => 
+      getCacheKey(1, sort)
+    );
+    
+    if (keysToDelete.length > 0) {
+      await redis.del(...keysToDelete);
+      console.log(`🗑️ Invalidated ${keysToDelete.length} cache keys:`, keysToDelete);
+    }
+  } catch (error) {
+    console.error("Cache invalidation error:", error);
+  }
+}
+
 export const noteResolvers = {
   Query: {
     getNoteById: async (
@@ -171,7 +213,7 @@ export const noteResolvers = {
       return note;
     },
 
-    getNotes: async (
+      getNotes: async (
       _: unknown,
       { page, limit, sortBy, userId, saved, userliked, saveCache }: GetNotesArgs,
       context: Context
@@ -181,37 +223,60 @@ export const noteResolvers = {
       }
 
       console.log("Context user:", context.user);
-      console.log("Query params:", { page, limit, userId, saved, userliked, saveCache });
+      console.log("Query params:", { page, limit, sortBy, userId, saved, userliked, saveCache });
 
-      const cacheKey = `note:page:${page}`;
+      // Generate cache key based on page AND sortBy
+      const cacheKey = getCacheKey(page, sortBy);
 
-      if (page === 1 && !saveCache) {
+      // Only cache page 1 of cacheable sorts without filters
+      const shouldUseCache = 
+        page === 1 && 
+        !userId && 
+        !saved && 
+        !userliked && 
+        !saveCache &&
+        isCacheableSort(sortBy);
+
+      // Try to get from cache
+      if (shouldUseCache) {
         try {
           const cached = await redis.get(cacheKey);
-          console.log('cacheKey',cacheKey);
-          console.log('cache data',cached);
+          console.log('cacheKey:', cacheKey);
+          console.log('cache data type:', typeof cached);
 
           if (cached) {
-            console.log("🚀 Served from Redis cache");
-            const cachedData = JSON.parse(cached);
+            console.log(`🚀 Served from Redis cache (${sortBy})`);
+            
+            // Handle both string and object returns from Redis
+            let cachedData;
+            if (typeof cached === 'string') {
+              cachedData = JSON.parse(cached);
+            } else if (typeof cached === 'object') {
+              cachedData = cached;
+            } else {
+              console.error('Unexpected cache data type:', typeof cached);
+              throw new Error('Invalid cache data format');
+            }
+            
             return cachedData;
+          } else {
+            console.log(` Cache miss for ${sortBy}, fetching from DB...`);
           }
         } catch (error) {
           console.error("Redis cache read error:", error);
-          
+          // Continue to fetch from database
         }
       }
 
       // Build where clause
-      const whereClause: any =  {};
+      const whereClause: any = {};
       if (!saved && !userliked && userId) {
-  whereClause.userId = userId; 
-}
-
+        whereClause.userId = userId;
+      }
 
       if (saved) {
         whereClause.savedByMe = {
-          some: { userId: userId},
+          some: { userId: userId },
         };
       }
 
@@ -232,10 +297,12 @@ export const noteResolvers = {
       // Get sort order
       const getOrderBy = (sortBy: string): any => {
         switch (sortBy) {
-          case "LIKES_DESC":
-            return { likes: { _count: "desc" } };
-          case "LIKES_ASC":
-            return { likes: { _count: "asc" } };
+          case "TREND_DESC":
+            return [
+              { savedByMe: { _count: "desc" } },
+              { likes: { _count: "desc" } },
+              { views: { _count: "desc" } },
+            ];
           case "CREATED_AT_DESC":
             return { createdAt: "desc" };
           case "CREATED_AT_ASC":
@@ -244,10 +311,6 @@ export const noteResolvers = {
             return { updatedAt: "desc" };
           case "UPDATED_AT_ASC":
             return { updatedAt: "asc" };
-          case "TITLE_ASC":
-            return { title: "asc" };
-          case "TITLE_DESC":
-            return { title: "desc" };
           default:
             return { createdAt: "desc" };
         }
@@ -286,7 +349,6 @@ export const noteResolvers = {
 
         // Format notes
         const formattedNotes = notes.map((note) => ({
-
           ...note,
           savedByMe: note.savedByMe.length > 0,
           likedByMe: note.likes.length > 0,
@@ -305,19 +367,24 @@ export const noteResolvers = {
           hasPreviousPage: validPage > 1,
         };
 
-        // Cache page 1 results
-        if (page === 1 ) {
+        // Cache page 1 results for cacheable sorts
+        if (shouldUseCache) {
           try {
-            await redis.set(cacheKey, JSON.stringify(response));
-            console.log("💾 Page 1 cached in Redis");
-            
+            const ttl = getCacheTTL(sortBy);
+         await redis.set(
+  cacheKey,
+  JSON.stringify(response),
+  {
+    ex: ttl  // or { ex: ttl } depending on your client
+  }
+);
+            console.log(`💾 Page 1 cached in Redis (${sortBy}, TTL: ${ttl}s)`);
           } catch (error) {
             console.error("Redis cache write error:", error);
-            
           }
         }
 
-        // // If saveCache is true, return null (used for cache rebuild)
+        // If saveCache is true, return null (used for cache rebuild)
         if (saveCache) {
           return null;
         }
@@ -328,6 +395,7 @@ export const noteResolvers = {
         throw new Error("Failed to fetch notes");
       }
     },
+
 
     searchNotes: async (
       _: unknown,
@@ -515,7 +583,8 @@ deleteNotes: async (
     ]);
 
     // Invalidate cache after deletion
-   
+     await invalidateAllNoteCaches();
+
 
     console.log("✅ Note deleted successfully");
     return true;
