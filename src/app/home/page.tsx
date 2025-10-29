@@ -413,34 +413,35 @@ const YouTubeNotesPage = () => {
 
       {/* Section Navigation - Hidden during search */}
       {!isSearching && (
-        <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
-          <div className="min-w-auto mx-auto px-6">
-            <div className="flex space-x-2">
-              {[
-                { id: 'trending', label: 'Trending', icon: TrendingUp, color: 'from-red-500 to-pink-500' },
-                { id: 'newly-uploaded', label: 'Fresh Content', icon: Clock, color: 'from-green-500 to-teal-500' },
-                { id: 'all-notes', label: 'All Notes', icon: Upload, color: 'from-blue-500 to-purple-500' }
-              ].map(({ id, label, icon: Icon, color }) => (
-                <button
-                  key={id}
-                  onClick={() => handleSectionChange(id)}
-                  className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl font-bold transition-all duration-300 relative overflow-hidden ${
-                    activeSection === id
-                      ? `bg-gradient-to-r ${color} text-white shadow-lg transform -translate-y-1`
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {label}
-                  {activeSection === id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+  <div className="relative bg-white/60 backdrop-blur-lg border-b border-white/30">
+    <div className="w-full  mx-auto px-4">
+      <div className="flex justify-between items-center divide-x divide-black/10">
+        {[
+          { id: 'trending', label: 'Trending', icon: TrendingUp, color: 'from-red-500 to-pink-500' },
+          { id: 'newly-uploaded', label: 'Fresh Content', icon: Clock, color: 'from-green-500 to-teal-500' },
+          { id: 'all-notes', label: 'All Notes', icon: Upload, color: 'from-blue-500 to-purple-500' }
+        ].map(({ id, label, icon: Icon, color }) => (
+          <button
+            key={id}
+            onClick={() => handleSectionChange(id)}
+            className={`flex-1 mx-2 flex items-center justify-center gap-3 py-4 rounded-t-2xl font-bold transition-all duration-300 relative overflow-hidden ${
+              activeSection === id
+                ? `bg-gradient-to-r ${color} text-white shadow-lg transform -translate-y-1`
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span>{label}</span>
+            {activeSection === id && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* Search Results Header */}
       {isSearching && debouncedSearchTerm && (

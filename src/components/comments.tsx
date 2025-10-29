@@ -2,7 +2,7 @@
 'use client'
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react';
 import gql from 'graphql-tag';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CommentItem from './AllComments';
 
 // GraphQL queries and mutations
@@ -102,16 +102,10 @@ function Comments({ noteId }: { noteId: string }) {
  const { data, loading, error, refetch } = useQuery<FetchCommentsQueryResult>(
   FETCH_COMMENTS,
   {
-    variables: { noteId },
+    variables: {
+       noteId                                          
+       },
     skip: !noteId,
-    onCompleted: (data:any) => {
-      console.log('onCompleted called:', data);
-      setComments(data.fetchAllComments);
-    },
-    onError:(error:any)=>{
-      console.log('Failed to fetch Messages',error);
-
-    }
   }
 );
 
@@ -143,10 +137,13 @@ React.useEffect(() => {
   const [fetchNestedReplies, { loading: isFetchingMore, data: nestedRepliesData }] =
   useLazyQuery<FetchNestedRepliesResult>(FETCH_NESTED_REPLIES, {
     fetchPolicy: 'network-only', // Always fetch from network to get latest replies
-    onError(error) {
-      console.error('Error fetching nested replies:', error.message);
-    },
+ 
   });
+  useEffect(() => {
+  if (error) {
+    console.error('Error fetching nested replies:', error.message);
+  }
+}, [error]);
 
 
   const addComment = async (content: string, parentId: string | null = null) => {
