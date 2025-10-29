@@ -20,10 +20,6 @@ import gql from 'graphql-tag'
 import { useQuery } from '@apollo/client/react'
 
 
-interface User {
-  id: string
-  profilePic: string
-}
 
 const FETCH_USER = gql`
   query FetchUserNavbarProfile {
