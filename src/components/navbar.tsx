@@ -94,18 +94,19 @@ function Navbar() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <button
+         
+           
+           
+         
+
+          {/* Desktop Auth Section */}
+          <div className="hidden md:flex items-center space-x-4">
+             <button
               onClick={handleHomeClick}
               className="text-gray-600 hover:text-gray-900 transition-colors"
             >
               Home
             </button>
-           
-          </div>
-
-          {/* Desktop Auth Section */}
-          <div className="hidden md:flex items-center space-x-4">
             {!loading ? (
               <>
                 <Dialog open={openUpload} onOpenChange={setOpenUpload}>
